@@ -15,9 +15,8 @@ pipeline {
         stage('Package Application') {
             steps {
                 echo 'Building and installing all modules...'
-                // On utilise 'install' pour installer les modules dans le dépôt local
-                // Cela permet aux modules de se trouver entre eux
-                sh 'mvn -B clean install -DskipTests'
+                // AJOUT DE -U pour forcer la mise à jour des dépendances
+                sh 'mvn -B clean install -DskipTests -U'
             }
         }
 
@@ -42,4 +41,3 @@ pipeline {
         }
     }
 }
-
