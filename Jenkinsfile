@@ -22,12 +22,20 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 // ==========================================================
-                // == CORRECTION : On copie le fichier de config existant  ==
+                // == CORRECTION FINALE : On écrit le bon contenu au bon endroit ==
                 // ==========================================================
-                echo 'Preparing test configuration...'
-                // On copie le modèle de configuration vers le nom attendu par les tests.
-                // Le chemin est relatif au sous-module 'obp-api'.
-                sh 'cp obp-api/src/main/resources/props/sample.props.template obp-api/src/test/resources/props/test.props'
+                echo 'Creating a valid properties file for tests...'
+                writeFile(
+                    // On utilise le chemin du sous-module 'obp-api'
+                    file: 'obp-api/src/test/resources/props/test.props',
+                    text: '''
+# Configuration minimale pour que les tests OBP-API se lancent
+hostname="http://127.0.0.1"
+db.driver=org.h2.Driver
+db.url=jdbc:h2:mem:OBPTest;DB_CLOSE_DELAY=-1
+elastic_search_host=localhost
+'''
+                 )
 
                 echo 'Running unit tests...'
                 sh 'mvn test'
