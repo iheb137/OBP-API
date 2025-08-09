@@ -1,31 +1,32 @@
 pipeline {
     agent any
+    tools {
+        maven 'Maven-3.9.6'
+    }
     stages {
         stage('Checkout') {
             steps {
-                echo '🔍 Checkout du code...'
                 git 'https://github.com/iheb137/OBP-API.git', branch: 'develop'
             }
         }
-        stage('Clean and Build with Maven') {
+        stage('Build') {
             steps {
-                echo '🧹 Nettoyage du cache Maven...'
-                sh 'rm -rf ~/.m2/repository/com/tesobe/obp-*'
-                
-                echo '📦 Compilation avec Maven (force update)...'
-                sh 'mvn -B clean install -DskipTests -U'
+                sh 'mvn -B clean package -DskipTests'
             }
         }
         stage('Build Docker Image') {
             steps {
-                echo '🏗️ Construction de l\'image Docker...'
                 sh 'docker build -t iheb137/obp-api:latest .'
             }
         }
-    }
-    post {
-        always {
-            echo '✅ Pipeline terminée.'
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
+                        sh 'docker push iheb137/obp-api:latest'
+                    }
+                }
+            }
         }
     }
 }
