@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: obp-api-service
+spec:
+  selector:
+    app: obp-api
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

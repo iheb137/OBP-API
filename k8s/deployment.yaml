@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: obp-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: obp-api
+  template:
+    metadata:
+      labels:
+        app: obp-api
+    spec:
+      containers:
+      - name: obp-api
+        image: iheb137/obp-api:latest
+        ports:
+        - containerPort: 8080
