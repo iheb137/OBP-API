@@ -29,16 +29,11 @@ pipeline {
                 sh 'cp obp-api/src/main/resources/props/test.default.props.template obp-api/src/main/resources/props/test.default.props'
                 
                 withMaven(mavenSettingsConfig: 'clean-maven-settings') {
-                    // MODIFICATION : Nous compilons tout (y compris les tests) mais nous sautons leur exécution
-                    // pour éviter les erreurs liées aux dépendances externes comme Redis.
+                    // Nous compilons tout mais nous sautons l'exécution des tests
                     sh 'mvn -B clean package -DskipTests'
                 }
             }
         }
-
-        // Les étapes de test et de qualité sont désactivées pour se concentrer sur un build qui réussit.
-        // stage('Unit Tests') { ... }
-        // stage('Code Quality') { ... }
 
         stage('Build Docker Image') {
             steps {
@@ -64,10 +59,5 @@ pipeline {
                 }
             }
         }
-    }
-
-    post {
-        // Les notifications Jira sont désactivées pour le moment
-        // pour simplifier et assurer un premier succès.
     }
 }
