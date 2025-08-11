@@ -33,6 +33,9 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
+                // MODIFICATION : Créer le fichier de configuration nécessaire pour les tests
+                sh 'cp obp-api/src/main/resources/props/test.default.props.template obp-api/src/main/resources/props/test.default.props'
+                
                 withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                     sh 'mvn test'
                 }
@@ -80,34 +83,33 @@ pipeline {
             }
         }
 
-        stage('Update Jira') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
-                        sh """
-                            curl -X POST -H 'Content-Type: application/json' \\
-                            -u $JIRA_USER:$JIRA_API_TOKEN \\
-                            --data '{"body":"✅ Build ${BUILD_NUMBER} déployé et testé avec succès."}' \\
-                            ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
-                        """
-                    }
-                }
-            }
-        }
+        // stage('Update Jira') {
+        //     steps {
+        //         script {
+        //             withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
+        //                 sh """
+        //                     curl -X POST -H 'Content-Type: application/json' \\
+        //                     -u $JIRA_USER:$JIRA_API_TOKEN \\
+        //                     --data '{"body":"✅ Build ${BUILD_NUMBER} déployé et testé avec succès."}' \\
+        //                     ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     post {
         failure {
-            // MODIFICATION : Suppression du bloc 'steps' qui causait une erreur
             script {
-                withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
-                    sh """
-                        curl -X POST -H 'Content-Type: application/json' \\
-                        -u $JIRA_USER:$JIRA_API_TOKEN \\
-                        --data '{"body":"❌ Build ${BUILD_NUMBER} a échoué."}' \\
-                        ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
-                    """
-                }
+                // withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
+                //     sh """
+                //         curl -X POST -H 'Content-Type: application/json' \\
+                //         -u $JIRA_USER:$JIRA_API_TOKEN \\
+                //         --data '{"body":"❌ Build ${BUILD_NUMBER} a échoué."}' \\
+                //         ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
+                //     """
+                // }
             }
         }
     }
