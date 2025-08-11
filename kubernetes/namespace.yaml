@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: biat-banking
+  labels:
+    name: biat-banking
+    environment: ${ENVIRONMENT}

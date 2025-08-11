@@ -1,0 +1,92 @@
+groups:
+- name: obp-api-alerts
+  rules:
+  # Alerte sur l'état de l'application
+  - alert: OBPApiDown
+    expr: up{job="obp-api"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "OBP-API est indisponible"
+      description: "L'instance OBP-API est indisponible depuis au moins 1 minute."
+
+  # Alerte sur la latence des requêtes
+  - alert: OBPApiHighResponseTime
+    expr: http_server_requests_seconds_max{job="obp-api", status!~"5..", uri!~"/actuator.*"} > 2
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Temps de réponse élevé sur OBP-API"
+      description: "Le temps de réponse maximum sur OBP-API est supérieur à 2 secondes depuis 2 minutes."
+
+  # Alerte sur le taux d'erreurs HTTP
+  - alert: OBPApiHighErrorRate
+    expr: sum(rate(http_server_requests_seconds_count{job="obp-api", status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="obp-api"}[5m])) > 0.05
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Taux d'erreurs élevé sur OBP-API"
+      description: "Le taux d'erreurs HTTP 5xx est supérieur à 5% depuis 2 minutes."
+
+  # Alerte sur l'utilisation de la mémoire JVM
+  - alert: OBPApiHighMemoryUsage
+    expr: sum(jvm_memory_used_bytes{job="obp-api"}) / sum(jvm_memory_max_bytes{job="obp-api"}) > 0.85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Utilisation élevée de la mémoire JVM"
+      description: "L'utilisation de la mémoire JVM est supérieure à 85% depuis 5 minutes."
+
+  # Alerte sur le nombre de threads
+  - alert: OBPApiHighThreadCount
+    expr: jvm_threads_live_threads{job="obp-api"} > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Nombre élevé de threads"
+      description: "Le nombre de threads actifs est supérieur à 100 depuis 5 minutes."
+
+  # Alerte sur le temps de garbage collection
+  - alert: OBPApiLongGcTime
+    expr: increase(jvm_gc_pause_seconds_sum{job="obp-api"}[1m]) > 10
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Temps de GC élevé"
+      description: "Le temps passé en garbage collection est supérieur à 10 secondes par minute."
+
+  # Alerte sur le nombre de requêtes
+  - alert: OBPApiHighTraffic
+    expr: sum(rate(http_server_requests_seconds_count{job="obp-api"}[1m])) > 100
+    for: 2m
+    labels:
+      severity: info
+    annotations:
+      summary: "Trafic élevé sur OBP-API"
+      description: "Le nombre de requêtes par seconde est supérieur à 100 depuis 2 minutes."
+
+  # Alerte sur l'espace disque
+  - alert: OBPApiLowDiskSpace
+    expr: node_filesystem_avail_bytes{job="node-exporter", mountpoint="/"} / node_filesystem_size_bytes{job="node-exporter", mountpoint="/"} < 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Espace disque faible"
+      description: "L'espace disque disponible est inférieur à 10% depuis 5 minutes."
+
+  # Alerte sur l'utilisation CPU
+  - alert: OBPApiHighCpuUsage
+    expr: sum(rate(process_cpu_seconds_total{job="obp-api"}[2m])) > 0.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Utilisation CPU élevée"
+      description: "L'utilisation CPU est supérieure à 80% depuis 5 minutes."

@@ -1,0 +1,43 @@
+jenkins:
+  systemMessage: "Jenkins configuré pour OBP-API"
+  numExecutors: 2
+  scmCheckoutRetryCount: 2
+  mode: NORMAL
+
+security:
+  queueItemAuthenticator:
+    authenticators:
+    - global:
+        strategy: triggeringUsersAuthorizationStrategy
+
+unclassified:
+  location:
+    url: http://localhost:18080/
+
+tool:
+  maven:
+    installations:
+    - name: "Maven 3.9.6"
+      home: "/usr/share/maven"
+  jdk:
+    installations:
+    - name: "JDK 17"
+      home: "/opt/java/openjdk"
+
+jobs:
+  - script: >
+      pipelineJob('OBP-API-Pipeline') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/votre-organisation/OBP-API.git')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }

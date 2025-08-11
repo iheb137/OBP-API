@@ -1,0 +1,13 @@
+# Configuration des dashboards Grafana
+
+apiVersion: 1
+
+providers:
+  - name: 'OBP-API Dashboards'
+    orgId: 1
+    folder: 'OBP-API'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

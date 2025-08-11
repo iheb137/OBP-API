@@ -1,0 +1,74 @@
+# Configuration Prometheus pour OBP-API
+
+global:
+  scrape_interval: 15s     # Intervalle de scraping par défaut
+  evaluation_interval: 15s # Intervalle d'évaluation des règles
+
+# Règles d'alerte
+rule_files:
+  - "rules/*.yml"
+
+# Configuration des cibles de scraping
+scrape_configs:
+  # Scraping de Prometheus lui-même
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scraping de l'application OBP-API via JMX Exporter
+  - job_name: 'obp-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['obp-api:8080']
+        labels:
+          application: 'obp-api'
+          environment: 'dev'
+
+  # Scraping de Node Exporter pour les métriques du système
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Scraping de cAdvisor pour les métriques des conteneurs
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Scraping de Jenkins
+  - job_name: 'jenkins'
+    metrics_path: '/prometheus'
+    static_configs:
+      - targets: ['jenkins:8080']
+
+  # Scraping de Minikube/Kubernetes
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  # Scraping des noeuds Kubernetes
+  - job_name: 'kubernetes-nodes'
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure_skip_verify: true
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics

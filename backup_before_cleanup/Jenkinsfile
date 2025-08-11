@@ -1,14 +1,17 @@
 pipeline {
     agent {
         docker {
-            image 'iheb99/maven-docker-kubectl:latest'
-            // MODIFICATION : Ajout d'un serveur DNS public pour la résolution de noms
-            args '-v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
+            image 'maven:3.9.6-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
+    tools {
+        maven 'Maven-3.9.6'
+    }
+
     environment {
-        DOCKER_IMAGE = "iheb99/obp-api:latest"
+        DOCKER_IMAGE = "iheb137/obp-api:latest"
         DOCKER_CREDENTIALS = "docker-hub-creds"
         JIRA_CREDENTIALS = "jira-creds"
         KUBECONFIG_CREDENTIALS = "kubeconfig"
@@ -18,6 +21,7 @@ pipeline {
     }
 
     stages {
+        /* ------------------ CI ------------------ */
         stage('Checkout') {
             steps {
                 git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
@@ -26,29 +30,24 @@ pipeline {
 
         stage('Build') {
             steps {
-                withMaven(mavenSettingsConfig: 'clean-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests'
-                }
+                sh 'mvn -B clean package -DskipTests'
             }
         }
 
         stage('Unit Tests') {
             steps {
-                withMaven(mavenSettingsConfig: 'clean-maven-settings') {
-                    sh 'mvn test'
-                }
+                sh 'mvn test'
             }
         }
 
         stage('Code Quality') {
             steps {
-                withMaven(mavenSettingsConfig: 'clean-maven-settings') {
-                    // Adapter ou supprimer si pas SonarQube
-                    sh 'mvn verify sonar:sonar -Dsonar.projectKey=obp-api -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=$SONAR_TOKEN'
-                }
+                // Si tu as SonarQube, adapte ou supprime cette étape
+                sh 'mvn verify sonar:sonar -Dsonar.projectKey=obp-api -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=$SONAR_TOKEN'
             }
         }
 
+        /* ------------------ CD ------------------ */
         stage('Build Docker Image') {
             steps {
                 sh "docker build -t ${DOCKER_IMAGE} ."
@@ -74,6 +73,7 @@ pipeline {
             }
         }
 
+        /* ------------------ CT ------------------ */
         stage('Post-Deployment Tests') {
             steps {
                 sh 'kubectl rollout status deployment/obp-api'
@@ -86,9 +86,9 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
                         sh """
-                            curl -X POST -H 'Content-Type: application/json' \\
-                            -u $JIRA_USER:$JIRA_API_TOKEN \\
-                            --data '{"body":"✅ Build ${BUILD_NUMBER} déployé et testé avec succès."}' \\
+                            curl -X POST -H 'Content-Type: application/json' \
+                            -u $JIRA_USER:$JIRA_API_TOKEN \
+                            --data '{"body":"✅ Build ${BUILD_NUMBER} déployé et testé avec succès."}' \
                             ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
                         """
                     }
@@ -103,9 +103,9 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
                         sh """
-                            curl -X POST -H 'Content-Type: application/json' \\
-                            -u $JIRA_USER:$JIRA_API_TOKEN \\
-                            --data '{"body":"❌ Build ${BUILD_NUMBER} a échoué."}' \\
+                            curl -X POST -H 'Content-Type: application/json' \
+                            -u $JIRA_USER:$JIRA_API_TOKEN \
+                            --data '{"body":"❌ Build ${BUILD_NUMBER} a échoué."}' \
                             ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
                         """
                     }

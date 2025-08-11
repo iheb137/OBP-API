@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: obp-api-config
+  namespace: biat-banking
+data:
+  # Configuration de l'application
+  hostname: "https://api.banking.biat-it.com"
+  connector: "star"
+  starConnector_supported_types: "mapped,internal"
+  allow_sandbox_account_creation: "true"
+  allow_sandbox_data_import: "true"
+  allow_account_deletion: "true"
+  transactionRequests_enabled: "true"
+  transactionRequests_supported_types: "SEPA,SANDBOX_TAN,FREE_FORM,COUNTERPARTY,ACCOUNT,SIMPLE"
+  allow_public_views: "true"
+  allow_oauth2_login: "true"
+  ResetPasswordUrlEnabled: "true"
+  consents.allowed: "true"
+  # Configuration de l'environnement
+  environment: "${ENVIRONMENT}"
