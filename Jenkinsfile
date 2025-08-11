@@ -2,7 +2,6 @@ pipeline {
     agent {
         docker {
             image 'iheb99/maven-docker-kubectl:latest'
-            // MODIFICATION : Ajout d'un serveur DNS public pour la résolution de noms
             args '-v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
         }
     }
@@ -99,16 +98,15 @@ pipeline {
 
     post {
         failure {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
-                        sh """
-                            curl -X POST -H 'Content-Type: application/json' \\
-                            -u $JIRA_USER:$JIRA_API_TOKEN \\
-                            --data '{"body":"❌ Build ${BUILD_NUMBER} a échoué."}' \\
-                            ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
-                        """
-                    }
+            // MODIFICATION : Suppression du bloc 'steps' qui causait une erreur
+            script {
+                withCredentials([usernamePassword(credentialsId: "${JIRA_CREDENTIALS}", passwordVariable: 'JIRA_API_TOKEN', usernameVariable: 'JIRA_USER')]) {
+                    sh """
+                        curl -X POST -H 'Content-Type: application/json' \\
+                        -u $JIRA_USER:$JIRA_API_TOKEN \\
+                        --data '{"body":"❌ Build ${BUILD_NUMBER} a échoué."}' \\
+                        ${JIRA_SITE}/rest/api/2/issue/${JIRA_ISSUE}/comment
+                    """
                 }
             }
         }
