@@ -2,7 +2,6 @@ pipeline {
     agent {
         docker {
             image 'iheb99/maven-docker-kubectl:latest'
-            // MODIFICATION FINALE : Forcer l'exécution en tant qu'utilisateur root
             args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
         }
     }
@@ -26,11 +25,9 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                // Créer le fichier de configuration nécessaire pour la compilation des tests
                 sh 'cp obp-api/src/main/resources/props/test.default.props.template obp-api/src/main/resources/props/test.default.props'
-                
+
                 withMaven(mavenSettingsConfig: 'clean-maven-settings') {
-                    // Nous compilons tout mais nous sautons l'exécution des tests
                     sh 'mvn -B clean package -DskipTests'
                 }
             }
@@ -45,7 +42,7 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_CREDENTIALS}") {
+                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS) {
                         sh "docker push ${DOCKER_IMAGE}"
                     }
                 }
