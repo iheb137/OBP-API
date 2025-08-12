@@ -25,7 +25,8 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                sh 'cp obp-api/src/main/resources/props/test.default.props.template obp-api/src/main/resources/props/test.default.props'
+                // Correction du chemin pour copier le fichier props
+                sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/test.default.props'
 
                 withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                     sh 'mvn -B clean package -DskipTests'
