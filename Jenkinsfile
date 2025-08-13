@@ -24,14 +24,17 @@ pipeline {
                 dir('obp-api') {
                     sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/test.default.props'
                     
-                    // MODIFICATION : On retire withMaven pour laisser le pom.xml gérer les dépôts
-                    sh 'mvn -B clean package -DskipTests'
+                    // Utilisation de la configuration Maven personnalisée pour résoudre les dépendances
+                    withMaven(mavenSettingsConfig: 'obp-maven-settings') {
+                        sh 'mvn -B clean package -DskipTests'
+                    }
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
+                // Le Dockerfile est à la racine du workspace
                 sh "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."
             }
         }
@@ -48,6 +51,7 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             environment {
+                // IDs des 3 secrets de type "Secret text"
                 K8S_CA_CERT_ID = 'k8s-ca-cert-b64'
                 K8S_CLIENT_CERT_ID = 'k8s-client-cert-b64'
                 K8S_CLIENT_KEY_ID = 'k8s-client-key-b64'
@@ -60,6 +64,8 @@ pipeline {
                 ]) {
                     script {
                         echo 'Building temporary kubeconfig file...'
+                        
+                        // Création du fichier de configuration 100% fiable
                         sh '''
                             echo "apiVersion: v1" > ./kubeconfig_generated.yaml
                             echo "clusters:" >> ./kubeconfig_generated.yaml
@@ -83,6 +89,8 @@ pipeline {
                         '''
                         
                         echo "Deploying application to Kubernetes..."
+                        
+                        // Utilisation du bon chemin vers le fichier de déploiement
                         sh 'kubectl --kubeconfig=./kubeconfig_generated.yaml apply -f deployment.yaml'
                         
                         echo "Deployment successful."
