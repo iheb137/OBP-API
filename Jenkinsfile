@@ -9,11 +9,8 @@ pipeline {
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
         DOCKER_CREDENTIALS = "docker-hub-creds"
-        JIRA_CREDENTIALS = "jira-creds"
         KUBECONFIG_CREDENTIALS = "kubeconfig"
         GIT_BRANCH = "develop"
-        JIRA_SITE = "https://saafiihebsi.atlassian.net"
-        JIRA_ISSUE = "KAN-1"
     }
 
     stages {
@@ -25,8 +22,8 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                // Correction du chemin pour copier le fichier props
-                sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/test.default.props'
+                // CORRECTION : Le chemin doit inclure le sous-module 'obp-api' pour trouver les bons fichiers.
+                sh 'cp obp-api/src/main/resources/props/test.default.props.template obp-api/src/main/resources/props/test.default.props'
 
                 withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                     sh 'mvn -B clean package -DskipTests'
@@ -36,7 +33,9 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${DOCKER_IMAGE} ."
+                // CORRECTION MAJEURE : On utilise le bon Dockerfile pour construire l'image de l'application.
+                // Assurez-vous d'avoir bien créé le fichier 'obp-api/Dockerfile' comme expliqué précédemment.
+                sh 'docker build -t ${DOCKER_IMAGE} -f obp-api/Dockerfile obp-api'
             }
         }
 
@@ -52,11 +51,11 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: "${KUBECONFIG_CREDENTIALS}", variable: 'KUBECONFIG')]) {
+                // Utilisation du credential Kubeconfig pour se connecter au cluster.
+                withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIALS, variable: 'KUBE_CONFIG')]) {
                     sh '''
-                        export KUBECONFIG=$KUBECONFIG
+                        export KUBECONFIG=$KUBE_CONFIG
                         kubectl apply -f k8s/deployment.yaml
-                        kubectl apply -f k8s/service.yaml
                     '''
                 }
             }
