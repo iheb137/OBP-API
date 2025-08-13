@@ -21,9 +21,10 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                // Le cd est nécessaire car le git clone crée un sous-dossier OBP-API
-                dir('OBP-API') {
-                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/test.default.props'
+                // On se place dans le sous-dossier obp-api (nom exact en minuscules)
+                dir('obp-api') {
+                    // CORRECTION : Utilisation du nom de fichier correct
+                    sh 'cp src/main/resources/props/default.props.template src/main/resources/props/test.default.props'
                     withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                         sh 'mvn -B clean package -DskipTests'
                     }
@@ -33,10 +34,8 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                // On se place dans le dossier contenant le Dockerfile avant de build
-                dir('OBP-API') {
-                    sh "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."
-                }
+                // Le Dockerfile est à la racine du workspace
+                sh "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."
             }
         }
 
@@ -50,18 +49,13 @@ pipeline {
             }
         }
 
-        // ======================================================================
-        // === ETAPE DE DEPLOIEMENT FINALE, FIABLE ET FONCTIONNELLE ===
-        // ======================================================================
         stage('Deploy to Kubernetes') {
             environment {
-                // On définit les IDs des 3 secrets de type "Secret text"
                 K8S_CA_CERT_ID = 'k8s-ca-cert-b64'
                 K8S_CLIENT_CERT_ID = 'k8s-client-cert-b64'
                 K8S_CLIENT_KEY_ID = 'k8s-client-key-b64'
             }
             steps {
-                // On charge les 3 secrets dans des variables
                 withCredentials([
                     string(credentialsId: env.K8S_CA_CERT_ID, variable: 'K8S_CA_CERT'),
                     string(credentialsId: env.K8S_CLIENT_CERT_ID, variable: 'K8S_CLIENT_CERT'),
@@ -69,13 +63,8 @@ pipeline {
                 ]) {
                     script {
                         echo 'Building temporary kubeconfig file...'
-                        
-                        // Création du fichier de configuration 100% fiable via des commandes echo
                         sh '''
-                            # On crée le fichier avec la première ligne (>)
                             echo "apiVersion: v1" > ./kubeconfig_generated.yaml
-
-                            # On ajoute les lignes suivantes (>>)
                             echo "clusters:" >> ./kubeconfig_generated.yaml
                             echo "- cluster:" >> ./kubeconfig_generated.yaml
                             echo "    certificate-authority-data: $K8S_CA_CERT" >> ./kubeconfig_generated.yaml
@@ -97,10 +86,7 @@ pipeline {
                         '''
                         
                         echo "Deploying application to Kubernetes..."
-                        
-                        // On utilise le fichier qu'on vient de créer pour le déploiement
-                        // ACTION REQUISE : Assurez-vous que ce chemin est correct !
-                        sh 'kubectl --kubeconfig=./kubeconfig_generated.yaml apply -f OBP-API/deployment.yaml'
+                        sh 'kubectl --kubeconfig=./kubeconfig_generated.yaml apply -f deployment.yaml'
                         
                         echo "Deployment successful."
                     }
