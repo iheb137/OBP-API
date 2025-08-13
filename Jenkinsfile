@@ -23,14 +23,10 @@ pipeline {
             steps {
                 dir('obp-api') {
                     // =======================================================
-                    // === NOUVELLE LIGNE DE DEBUG POUR LISTER LES FICHIERS ===
+                    // === CORRECTION FINALE BASÉE SUR LA LISTE DES FICHIERS ===
                     // =======================================================
-                    echo "--- Listing all files and directories to debug ---"
-                    sh 'ls -lR'
-                    echo "---------------- End of file listing ----------------"
-
-                    // La commande qui échoue
-                    sh 'cp src/main/resources/props/default.props.template src/main/resources/props/test.default.props'
+                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/test.default.props'
+                    
                     withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                         sh 'mvn -B clean package -DskipTests'
                     }
@@ -38,7 +34,6 @@ pipeline {
             }
         }
 
-        // ... Le reste du pipeline reste identique ...
         stage('Build Docker Image') {
             steps {
                 sh "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."
