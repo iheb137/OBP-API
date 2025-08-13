@@ -2,14 +2,14 @@ pipeline {
     agent {
         docker {
             image 'iheb99/maven-docker-kubectl:latest'
-            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host'
         }
     }
 
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
         DOCKER_CREDENTIALS = "docker-hub-creds"
-        KUBECONFIG_CREDENTIALS = "kubeconfig"
+        // La variable KUBECONFIG_CREDENTIALS a été supprimée car nous utilisons une méthode plus sûre
         GIT_BRANCH = "develop"
     }
 
@@ -45,14 +45,21 @@ pipeline {
             }
         }
 
+        // ======================================================================
+        // === NOUVELLE ETAPE DE DEPLOIEMENT CORRIGEE ===
+        // ======================================================================
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIALS, variable: 'KUBE_CONFIG')]) {
-                    sh '''
-                        export KUBECONFIG=$KUBE_CONFIG
-                        kubectl config use-context minikube
-                        kubectl apply -f k8s/deployment.yaml
-                    '''
+                script {
+                    echo 'Loading Kubernetes config...'
+                    // MODIFICATION : On charge le fichier kubeconfig secret
+                    withCredentials([file(credentialsId: 'kubeconfig-portable', variable: 'KUBECONFIG_FILE')]) {
+                        echo 'Deploying application to Kubernetes...'
+                        // MODIFICATION : On dit à kubectl d'utiliser ce fichier spécifique
+                        // ACTION REQUISE : Assurez-vous que le chemin vers votre fichier yaml est correct !
+                        sh "env KUBECONFIG=$KUBECONFIG_FILE kubectl apply -f obp-api/deployment.yaml"
+                    }
+                    echo 'Deployment finished.'
                 }
             }
         }
