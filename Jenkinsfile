@@ -21,9 +21,15 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                // On se place dans le sous-dossier obp-api (nom exact en minuscules)
                 dir('obp-api') {
-                    // CORRECTION : Utilisation du nom de fichier correct
+                    // =======================================================
+                    // === NOUVELLE LIGNE DE DEBUG POUR LISTER LES FICHIERS ===
+                    // =======================================================
+                    echo "--- Listing all files and directories to debug ---"
+                    sh 'ls -lR'
+                    echo "---------------- End of file listing ----------------"
+
+                    // La commande qui échoue
                     sh 'cp src/main/resources/props/default.props.template src/main/resources/props/test.default.props'
                     withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                         sh 'mvn -B clean package -DskipTests'
@@ -32,9 +38,9 @@ pipeline {
             }
         }
 
+        // ... Le reste du pipeline reste identique ...
         stage('Build Docker Image') {
             steps {
-                // Le Dockerfile est à la racine du workspace
                 sh "docker build -t ${DOCKER_IMAGE} -f Dockerfile ."
             }
         }
