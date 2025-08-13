@@ -22,14 +22,10 @@ pipeline {
         stage('Build & Package') {
             steps {
                 dir('obp-api') {
-                    // =======================================================
-                    // === CORRECTION FINALE BASÉE SUR LA LISTE DES FICHIERS ===
-                    // =======================================================
                     sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/test.default.props'
                     
-                    withMaven(mavenSettingsConfig: 'clean-maven-settings') {
-                        sh 'mvn -B clean package -DskipTests'
-                    }
+                    // MODIFICATION : On retire withMaven pour laisser le pom.xml gérer les dépôts
+                    sh 'mvn -B clean package -DskipTests'
                 }
             }
         }
