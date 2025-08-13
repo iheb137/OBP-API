@@ -22,9 +22,7 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                // CORRECTION : Le chemin doit inclure le sous-module 'obp-api' pour trouver les bons fichiers.
                 sh 'cp obp-api/src/main/resources/props/test.default.props.template obp-api/src/main/resources/props/test.default.props'
-
                 withMaven(mavenSettingsConfig: 'clean-maven-settings') {
                     sh 'mvn -B clean package -DskipTests'
                 }
@@ -33,8 +31,6 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                // CORRECTION MAJEURE : On utilise le bon Dockerfile pour construire l'image de l'application.
-                // Assurez-vous d'avoir bien créé le fichier 'obp-api/Dockerfile' comme expliqué précédemment.
                 sh 'docker build -t ${DOCKER_IMAGE} -f obp-api/Dockerfile obp-api'
             }
         }
@@ -51,10 +47,10 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                // Utilisation du credential Kubeconfig pour se connecter au cluster.
                 withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIALS, variable: 'KUBE_CONFIG')]) {
                     sh '''
                         export KUBECONFIG=$KUBE_CONFIG
+                        kubectl config use-context minikube
                         kubectl apply -f k8s/deployment.yaml
                     '''
                 }
