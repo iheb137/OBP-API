@@ -25,10 +25,25 @@ pipeline {
             }
         }
 
-        stage('Build & Package') {
+        stage('Build & Package with Postgres Config') {
             steps {
                 dir('obp-api') {
-                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
+                    // Écraser le fichier default.props avec la configuration pour PostgreSQL
+                    writeFile file: 'src/main/resources/props/default.props', text: """
+# -*- mode: scala; -*-
+#
+# OBP-API Configuration file for KUBERNETES deployment
+#
+#####################################################################
+# Database settings for PostgreSQL in Kubernetes
+#####################################################################
+db.driver=org.postgresql.Driver
+db.url="jdbc:postgresql://postgres-service:5432/postgres"
+db.user=postgres
+db.password=postgres_password
+run.mode=development
+#####################################################################
+"""
                 }
                 
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
