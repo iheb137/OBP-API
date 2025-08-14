@@ -25,25 +25,19 @@ pipeline {
             }
         }
 
-        stage('Build & Package with Postgres Config') {
+        stage('Configure & Package') {
             steps {
                 dir('obp-api') {
-                    // Écraser le fichier default.props avec la configuration pour PostgreSQL
-                    writeFile file: 'src/main/resources/props/default.props', text: """
-# -*- mode: scala; -*-
-#
-# OBP-API Configuration file for KUBERNETES deployment
-#
-#####################################################################
-# Database settings for PostgreSQL in Kubernetes
-#####################################################################
-db.driver=org.postgresql.Driver
-db.url="jdbc:postgresql://postgres-service:5432/postgres"
-db.user=postgres
-db.password=postgres_password
-run.mode=development
-#####################################################################
-"""
+                    // Étape 1: Copier le template pour ne pas partir de zéro
+                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
+                    
+                    // Étape 2: Remplacer les lignes de la base de données pour pointer vers PostgreSQL
+                    sh '''
+                    sed -i 's/^db.driver=.*/db.driver=org.postgresql.Driver/' src/main/resources/props/default.props
+                    sed -i 's|db.url=.*|db.url="jdbc:postgresql://postgres-service:5432/postgres"|' src/main/resources/props/default.props
+                    sed -i 's/^db.user=.*/db.user=postgres/' src/main/resources/props/default.props
+                    sed -i 's/^db.password=.*/db.password=postgres_password/' src/main/resources/props/default.props
+                    '''
                 }
                 
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
