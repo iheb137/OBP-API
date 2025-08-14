@@ -12,17 +12,23 @@ spec:
       labels:
         app: obp-api
     spec:
-      # SECTION AJOUTÉE : INIT CONTAINER
       initContainers:
       - name: wait-for-postgres
         image: busybox:1.36
         command: ['sh', '-c', 'until nc -zv postgres-service 5432; do echo "Waiting for postgres..."; sleep 2; done;']
-      # FIN DE LA SECTION AJOUTÉE
       containers:
       - name: obp-api
         image: iheb99/obp-api:latest
         ports:
         - containerPort: 8080
+        # SECTION AJOUTÉE : Configuration via variables d'environnement
+        env:
+        - name: CATALINA_OPTS
+          value: >-
+            -Ddb.driver=org.postgresql.Driver
+            -Ddb.url="jdbc:postgresql://postgres-service:5432/postgres"
+            -Ddb.user=postgres
+            -Ddb.password=postgres_password
 ---
 apiVersion: v1
 kind: Service
