@@ -25,45 +25,9 @@ pipeline {
             }
         }
 
-        stage('Configure & Package') {
+        // ÉTAPE SIMPLIFIÉE : On ne modifie plus les fichiers de configuration ici
+        stage('Package Application') {
             steps {
-                dir('obp-api') {
-                    // Utiliser writeFile pour créer le fichier de configuration avec le bon contenu
-                    writeFile file: 'src/main/resources/props/default.props', text: '''
-# OBP-API Configuration file for Kubernetes deployment
-# Database settings
-db.driver=org.postgresql.Driver
-db.url="jdbc:postgresql://postgres-service:5432/postgres"
-db.user=postgres
-db.password=postgres_password
-
-# General settings copied from the template
-run.mode=development
-hostname=http://localhost:8016
-transactionRequests_supported_types=SANDBOX_TAN,COUNTERPARTY,SEPA,ACCOUNT_OTP,ACCOUNT,SIMPLE,AGENT_CASH_WITHDRAWAL,CARD
-payments_enabled=false
-allow_public_views=true
-allow_sandbox_data_import=true
-allow_sandbox_account_creation=true
-allow_account_deletion=true
-importer_secret=change_me
-sandbox_data_import_secret=change_me
-connector=star
-starConnector_supported_types=mapped,internal
-messageQueue.createBankAccounts=false
-messageQueue.updateBankAccountsTransaction=false
-tests.port=8016
-ACCOUNT_OTP_INSTRUCTION_TRANSPORT=dummy
-COUNTERPARTY_OTP_INSTRUCTION_TRANSPORT=dummy
-FREE_FORM_OTP_INSTRUCTION_TRANSPORT=dummy
-SEPA_OTP_INSTRUCTION_TRANSPORT=dummy
-SIMPLE_OTP_INSTRUCTION_TRANSPORT=dummy
-AGENT_CASH_WITHDRAWAL_OTP_INSTRUCTION_TRANSPORT=dummy
-CARD_OTP_INSTRUCTION_TRANSPORT=dummy
-SEPA_CREDIT_TRANSFERS_OTP_INSTRUCTION_TRANSPORT=dummy
-'''
-                }
-                
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
