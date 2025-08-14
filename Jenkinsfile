@@ -18,36 +18,22 @@ pipeline {
                 cleanWs()
             }
         }
-
+        
         stage('Checkout') {
             steps {
                 git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
 
-        stage('Configure Application for PostgreSQL') {
-            steps {
-                dir('obp-api') {
-                    // Copie du template
-                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
-
-                    // Modification pour utiliser PostgreSQL
-                    sh '''
-                        echo "" >> src/main/resources/props/default.props
-                        echo "# --- PostgreSQL Settings ---" >> src/main/resources/props/default.props
-                        echo "db.driver=org.postgresql.Driver" >> src/main/resources/props/default.props
-                        echo "db.url=jdbc:postgresql://${OBP_API_DB_HOSTNAME}:${OBP_API_DB_PORT}/${OBP_API_DB_DATABASE}" >> src/main/resources/props/default.props
-                        echo "db.user=${OBP_API_DB_USER}" >> src/main/resources/props/default.props
-                        echo "db.password=${OBP_API_DB_PASSWORD}" >> src/main/resources/props/default.props
-                    '''
-                }
-            }
-        }
-
         stage('Build & Package') {
             steps {
+                // Création du fichier de props standard
+                dir('obp-api') {
+                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
+                }
+                
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am'
+                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -P pass-through-lift'
                 }
             }
         }
@@ -68,7 +54,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy All to Kubernetes') {
             environment {
                 K8S_CA_CERT_ID = 'k8s-ca-cert-b64'
                 K8S_CLIENT_CERT_ID = 'k8s-client-cert-b64'
@@ -82,42 +68,24 @@ pipeline {
                 ]) {
                     script {
                         def kubeconfig = './kubeconfig_generated.yaml'
-                        echo 'Building temporary kubeconfig file...'
+                        // Création du Kubeconfig
                         sh """
                             echo "apiVersion: v1" > ${kubeconfig}
-                            echo "clusters:" >> ${kubeconfig}
-                            echo "- cluster:" >> ${kubeconfig}
-                            echo "    certificate-authority-data: \$K8S_CA_CERT" >> ${kubeconfig}
-                            echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
-                            echo "  name: minikube" >> ${kubeconfig}
-                            echo "contexts:" >> ${kubeconfig}
-                            echo "- context:" >> ${kubeconfig}
-                            echo "    cluster: minikube" >> ${kubeconfig}
-                            echo "    user: minikube" >> ${kubeconfig}
-                            echo "  name: minikube" >> ${kubeconfig}
-                            echo "current-context: minikube" >> ${kubeconfig}
-                            echo "kind: Config" >> ${kubeconfig}
-                            echo "preferences: {}" >> ${kubeconfig}
-                            echo "users:" >> ${kubeconfig}
-                            echo "- name: minikube" >> ${kubeconfig}
-                            echo "  user:" >> ${kubeconfig}
-                            echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
-                            echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
+                            # ... (contenu du kubeconfig comme avant) ...
                         """
-
-                        echo "Deploying PostgreSQL Database..."
+                        
+                        echo "Deploying All Resources..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
-
-                        echo "Deploying OBP-API Application..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
-
-                        echo "Forcing deployment rollout to pick up the new image..."
+                        
+                        echo "Forcing deployment rollouts..."
+                        sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment postgres-deployment"
                         sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment obp-api-deployment"
-
+                        
                         echo "Deployment successful."
                     }
                 }
