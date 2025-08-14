@@ -25,9 +25,14 @@ pipeline {
             }
         }
 
-        // ÉTAPE SIMPLIFIÉE : On ne modifie plus les fichiers de configuration ici
         stage('Package Application') {
             steps {
+                dir('obp-api') {
+                    // Étape cruciale : s'assurer que le fichier default.props existe avant le packaging.
+                    // Son contenu sera surchargé au runtime par Kubernetes, mais sa présence est obligatoire.
+                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
+                }
+                
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
