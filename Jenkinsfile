@@ -27,13 +27,12 @@ pipeline {
 
         stage('Build & Package') {
             steps {
-                // Création du fichier de props standard
                 dir('obp-api') {
                     sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
                 }
                 
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -P pass-through-lift'
+                    sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
             }
         }
@@ -71,16 +70,33 @@ pipeline {
                         // Création du Kubeconfig
                         sh """
                             echo "apiVersion: v1" > ${kubeconfig}
-                            # ... (contenu du kubeconfig comme avant) ...
+                            echo "clusters:" >> ${kubeconfig}
+                            echo "- cluster:" >> ${kubeconfig}
+                            echo "    certificate-authority-data: \$K8S_CA_CERT" >> ${kubeconfig}
+                            echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
+                            echo "  name: minikube" >> ${kubeconfig}
+                            echo "contexts:" >> ${kubeconfig}
+                            echo "- context:" >> ${kubeconfig}
+                            echo "    cluster: minikube" >> ${kubeconfig}
+                            echo "    user: minikube" >> ${kubeconfig}
+                            echo "  name: minikube" >> ${kubeconfig}
+                            echo "current-context: minikube" >> ${kubeconfig}
+                            echo "kind: Config" >> ${kubeconfig}
+                            echo "preferences: {}" >> ${kubeconfig}
+                            echo "users:" >> ${kubeconfig}
+                            echo "- name: minikube" >> ${kubeconfig}
+                            echo "  user:" >> ${kubeconfig}
+                            echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
+                            echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
                         """
                         
                         echo "Deploying All Resources..."
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-secret.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pv.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pvc.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-deployment.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-service.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f deployment.yaml"
                         
                         echo "Forcing deployment rollouts..."
                         sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment postgres-deployment"
