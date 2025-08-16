@@ -27,11 +27,17 @@ pipeline {
 
         stage('Package Application') {
             steps {
-                dir('obp-api') {
-                    // Étape cruciale : s'assurer que le fichier default.props existe avant le packaging.
-                    // Son contenu sera surchargé au runtime par Kubernetes, mais sa présence est obligatoire.
-                    sh 'cp src/main/resources/props/test.default.props.template src/main/resources/props/default.props'
-                }
+                // Créer dynamiquement le fichier de configuration pour utiliser PostgreSQL.
+                // Ceci remplace la copie du fichier de test.
+                sh '''
+                cat > obp-api/src/main/resources/props/default.props <<EOL
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/postgres
+db.user=postgres
+db.password=postgres_password
+connector=mapped
+EOL
+                '''
                 
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
