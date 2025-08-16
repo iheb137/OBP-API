@@ -27,12 +27,12 @@ pipeline {
 
         stage('Package Application') {
             steps {
-                // Créer dynamiquement le fichier de configuration pour utiliser PostgreSQL.
-                // Ceci remplace la copie du fichier de test.
+                // Créer dynamiquement le fichier de configuration pour utiliser PostgreSQL
+                // Ajout de sslmode=disable pour éviter les problèmes de connexion SSL.
                 sh '''
                 cat > obp-api/src/main/resources/props/default.props <<EOL
 db.driver=org.postgresql.Driver
-db.url=jdbc:postgresql://postgres-service:5432/postgres
+db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
 db.user=postgres
 db.password=postgres_password
 connector=mapped
