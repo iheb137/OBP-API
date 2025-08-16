@@ -100,45 +100,4 @@ EOL
                 ]) {
                     script {
                         def kubeconfig = './kubeconfig_generated.yaml'
-                        // Création du Kubeconfig
-                        sh """
-                            echo "apiVersion: v1" > ${kubeconfig}
-                            echo "clusters:" >> ${kubeconfig}
-                            echo "- cluster:" >> ${kubeconfig}
-                            echo "    certificate-authority-data: \$K8S_CA_CERT" >> ${kubeconfig}
-                            echo "    server: https://192.168.49.2:8433" >> ${kubeconfig}
-                            echo "  name: minikube" >> ${kubeconfig}
-                            echo "contexts:" >> ${kubeconfig}
-                            echo "- context:" >> ${kubeconfig}
-                            echo "    cluster: minikube" >> ${kubeconfig}
-                            echo "    user: minikube" >> ${kubeconfig}
-                            echo "  name: minikube" >> ${kubeconfig}
-                            echo "current-context: minikube" >> ${kubeconfig}
-                            echo "kind: Config" >> ${kubeconfig}
-                            echo "preferences: {}" >> ${kubeconfig}
-                            echo "users:" >> ${kubeconfig}
-                            echo "- name: minikube" >> ${kubeconfig}
-                            echo "  user:" >> ${kubeconfig}
-                            echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
-                            echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
-                        """
-                        
-                        echo "Deploying All Resources..."
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-secret.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pv.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pvc.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-deployment.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-service.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f deployment.yaml"
-                        
-                        echo "Forcing deployment rollouts..."
-                        sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment postgres-deployment"
-                        sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment obp-api-deployment"
-                        
-                        echo "Deployment successful."
-                    }
-                }
-            }
-        }
-    }
-}
+                        // Création du K
