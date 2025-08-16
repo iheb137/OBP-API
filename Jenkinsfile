@@ -100,13 +100,13 @@ EOL
                 ]) {
                     script {
                         def kubeconfig = './kubeconfig_generated.yaml'
-                        // Création du Kubeconfig avec la bonne adresse IP
+                        // Création du Kubeconfig avec la bonne adresse IP et le bon port
                         sh """
                             echo "apiVersion: v1" > ${kubeconfig}
                             echo "clusters:" >> ${kubeconfig}
                             echo "- cluster:" >> ${kubeconfig}
                             echo "    certificate-authority-data: \$K8S_CA_CERT" >> ${kubeconfig}
-                            echo "    server: https://192.168.49.2:8433" >> ${kubeconfig}
+                            echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
                             echo "  name: minikube" >> ${kubeconfig}
                             echo "contexts:" >> ${kubeconfig}
                             echo "- context:" >> ${kubeconfig}
