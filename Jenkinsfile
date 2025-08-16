@@ -27,15 +27,40 @@ pipeline {
 
         stage('Package Application') {
             steps {
-                // Créer dynamiquement le fichier de configuration pour utiliser PostgreSQL
-                // Ajout de sslmode=disable pour éviter les problèmes de connexion SSL.
+                // Créer un fichier de configuration complet avec les bonnes informations de base de données
+                // et les autres paramètres par défaut nécessaires.
                 sh '''
                 cat > obp-api/src/main/resources/props/default.props <<EOL
+# --- Database Configuration ---
 db.driver=org.postgresql.Driver
 db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
 db.user=postgres
 db.password=postgres_password
+
+# --- OBP Application Configuration ---
 connector=mapped
+hostname=http://localhost:8080
+allow_public_views=true
+allow_sandbox_data_import=true
+allow_sandbox_account_creation=true
+allow_account_deletion=true
+payments_enabled=false
+importer_secret=change_me
+sandbox_data_import_secret=change_me
+
+# --- Default values from template ---
+FREE_FORM_OTP_INSTRUCTION_TRANSPORT=dummy
+SEPA_OTP_INSTRUCTION_TRANSPORT=dummy
+SEPA_CREDIT_TRANSFERS_OTP_INSTRUCTION_TRANSPORT=dummy
+CARD_OTP_INSTRUCTION_TRANSPORT=dummy
+AGENT_CASH_WITHDRAWAL_OTP_INSTRUCTION_TRANSPORT=dummy
+COUNTERPARTY_OTP_INSTRUCTION_TRANSPORT=dummy
+ACCOUNT_OTP_INSTRUCTION_TRANSPORT=dummy
+SIMPLE_OTP_INSTRUCTION_TRANSPORT=dummy
+transactionRequests_supported_types=SANDBOX_TAN,COUNTERPARTY,SEPA,ACCOUNT_OTP,ACCOUNT,SIMPLE,AGENT_CASH_WITHDRAWAL,CARD
+starConnector_supported_types=mapped,internal
+messageQueue.createBankAccounts=false
+messageQueue.updateBankAccountsTransaction=false
 EOL
                 '''
                 
@@ -81,7 +106,7 @@ EOL
                             echo "clusters:" >> ${kubeconfig}
                             echo "- cluster:" >> ${kubeconfig}
                             echo "    certificate-authority-data: \$K8S_CA_CERT" >> ${kubeconfig}
-                            echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
+                            echo "    server: https://192.168.49.2:8433" >> ${kubeconfig}
                             echo "  name: minikube" >> ${kubeconfig}
                             echo "contexts:" >> ${kubeconfig}
                             echo "- context:" >> ${kubeconfig}
