@@ -27,8 +27,6 @@ pipeline {
 
         stage('Package Application') {
             steps {
-                // Créer un fichier de configuration complet avec les bonnes informations de base de données
-                // et les autres paramètres par défaut nécessaires.
                 sh '''
                 cat > obp-api/src/main/resources/props/default.props <<EOL
 # --- Database Configuration ---
@@ -100,7 +98,6 @@ EOL
                 ]) {
                     script {
                         def kubeconfig = './kubeconfig_generated.yaml'
-                        // Création du Kubeconfig avec la bonne adresse IP et le bon port
                         sh """
                             echo "apiVersion: v1" > ${kubeconfig}
                             echo "clusters:" >> ${kubeconfig}
@@ -129,6 +126,10 @@ EOL
                         sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pvc.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-deployment.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-service.yaml"
+                        
+                        echo "Waiting for PostgreSQL to be ready..."
+                        sleep 30 // <-- C'EST LA LIGNE AJOUTÉE
+                        
                         sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f deployment.yaml"
                         
                         echo "Forcing deployment rollouts..."
