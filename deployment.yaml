@@ -21,18 +21,6 @@ spec:
         image: iheb99/obp-api:latest
         ports:
         - containerPort: 8080
-        env:
-        - name: db_driver
-          value: "org.postgresql.Driver"
-        - name: db_url
-          value: "jdbc:postgresql://postgres-service:5432/postgres"
-        - name: db_user
-          value: "postgres"
-        - name: db_password
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: postgres-password
 ---
 apiVersion: v1
 kind: Service
