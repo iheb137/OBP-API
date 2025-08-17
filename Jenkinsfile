@@ -121,20 +121,12 @@ EOL
                         """
                         
                         echo "Deploying All Resources..."
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-secret.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pv.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-pvc.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-deployment.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f postgres-service.yaml"
-                        
-                        echo "Waiting for PostgreSQL to be ready..."
-                        sleep 30 // <-- C'EST LA LIGNE AJOUTÉE
-                        
-                        sh "kubectl --kubeconfig=${kubeconfig} apply --validate=false -f deployment.yaml"
-                        
-                        echo "Forcing deployment rollouts..."
-                        sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment postgres-deployment"
-                        sh "kubectl --kubeconfig=${kubeconfig} rollout restart deployment obp-api-deployment"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
                         
                         echo "Deployment successful."
                     }
