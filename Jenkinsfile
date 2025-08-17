@@ -35,7 +35,7 @@ pipeline {
 db.driver=org.postgresql.Driver
 db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
 db.user=postgres
-db.password=postgres_password
+db.password=postgres
 
 # --- OBP Application Configuration ---
 connector=mapped
