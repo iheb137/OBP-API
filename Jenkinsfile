@@ -22,7 +22,41 @@ pipeline {
 
         stage('Package Application') {
             steps {
-                // Configuration is now handled by Kubernetes ConfigMap and Secrets
+                sh '''
+                cat > obp-api/src/main/resources/props/default.props <<EOL
+# --- Database Configuration ---
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+db.user=postgres
+db.password=postgres
+
+# --- OBP Application Configuration ---
+connector=mapped
+hostname=http://localhost:8080
+allow_public_views=true
+allow_sandbox_data_import=true
+allow_sandbox_account_creation=true
+allow_account_deletion=true
+payments_enabled=false
+importer_secret=change_me
+sandbox_data_import_secret=change_me
+
+# --- Default values from template ---
+FREE_FORM_OTP_INSTRUCTION_TRANSPORT=dummy
+SEPA_OTP_INSTRUCTION_TRANSPORT=dummy
+SEPA_CREDIT_TRANSFERS_OTP_INSTRUCTION_TRANSPORT=dummy
+CARD_OTP_INSTRUCTION_TRANSPORT=dummy
+AGENT_CASH_WITHDRAWAL_OTP_INSTRUCTION_TRANSPORT=dummy
+COUNTERPARTY_OTP_INSTRUCTION_TRANSPORT=dummy
+ACCOUNT_OTP_INSTRUCTION_TRANSPORT=dummy
+SIMPLE_OTP_INSTRUCTION_TRANSPORT=dummy
+transactionRequests_supported_types=SANDBOX_TAN,COUNTERPARTY,SEPA,ACCOUNT_OTP,ACCOUNT,SIMPLE,AGENT_CASH_WITHDRAWAL,CARD
+starConnector_supported_types=mapped,internal
+messageQueue.createBankAccounts=false
+messageQueue.updateBankAccountsTransaction=false
+EOL
+                '''
+                
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
@@ -59,7 +93,6 @@ pipeline {
                 ]) {
                     script {
                         def kubeconfig = './kubeconfig_generated.yaml'
-                        // IMPORTANT: Use \$VAR to pass shell environment variables, not ${VAR}
                         sh """
                             echo "apiVersion: v1" > ${kubeconfig}
                             echo "clusters:" >> ${kubeconfig}
@@ -88,7 +121,6 @@ pipeline {
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f obp-api-configmap.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
                         
                         echo "Deployment successful."
