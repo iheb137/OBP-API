@@ -40,20 +40,6 @@ allow_account_deletion=true
 payments_enabled=false
 importer_secret=change_me
 sandbox_data_import_secret=change_me
-
-# --- Default values from template ---
-FREE_FORM_OTP_INSTRUCTION_TRANSPORT=dummy
-SEPA_OTP_INSTRUCTION_TRANSPORT=dummy
-SEPA_CREDIT_TRANSFERS_OTP_INSTRUCTION_TRANSPORT=dummy
-CARD_OTP_INSTRUCTION_TRANSPORT=dummy
-AGENT_CASH_WITHDRAWAL_OTP_INSTRUCTION_TRANSPORT=dummy
-COUNTERPARTY_OTP_INSTRUCTION_TRANSPORT=dummy
-ACCOUNT_OTP_INSTRUCTION_TRANSPORT=dummy
-SIMPLE_OTP_INSTRUCTION_TRANSPORT=dummy
-transactionRequests_supported_types=SANDBOX_TAN,COUNTERPARTY,SEPA,ACCOUNT_OTP,ACCOUNT,SIMPLE,AGENT_CASH_WITHDRAWAL,CARD
-starConnector_supported_types=mapped,internal
-messageQueue.createBankAccounts=false
-messageQueue.updateBankAccountsTransaction=false
 EOL
                 '''
                 
@@ -121,6 +107,7 @@ EOL
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
+                        // Nous n'utilisons plus de ConfigMap, car la configuration est dans le WAR
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
                         
                         echo "Deployment successful."
