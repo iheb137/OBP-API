@@ -23,7 +23,11 @@ pipeline {
         stage('Package Application') {
             steps {
                 sh '''
+                mkdir -p obp-api/src/main/resources/props
                 cat > obp-api/src/main/resources/props/default.props <<EOL
+# --- Run Mode ---
+run.mode=production
+
 # --- Database Configuration ---
 db.driver=org.postgresql.Driver
 db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
@@ -42,7 +46,7 @@ importer_secret=change_me
 sandbox_data_import_secret=change_me
 EOL
                 '''
-                
+
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
@@ -51,6 +55,14 @@ EOL
 
         stage('Build Docker Image') {
             steps {
+                // 🔥 Copier le props dans /props de l’image
+                sh """
+                echo 'FROM tomcat:9.0-jdk11
+                COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+                COPY obp-api/src/main/resources/props/default.props /props/default.props
+                ' > Dockerfile
+                """
+
                 sh "docker build --no-cache -t ${DOCKER_IMAGE} -f Dockerfile ."
             }
         }
@@ -100,14 +112,13 @@ EOL
                             echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
                             echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
                         """
-                        
+
                         echo "Deploying All Resources..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
-                        // Nous n'utilisons plus de ConfigMap, car la configuration est dans le WAR
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
                         
                         echo "Deployment successful."
