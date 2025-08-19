@@ -25,8 +25,6 @@ pipeline {
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
-                // RENOMMER LE FICHIER .WAR POUR CORRESPONDRE AU DOCKERFILE
-                sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
             }
         }
 
