@@ -3,25 +3,23 @@ kind: ConfigMap
 metadata:
   name: obp-api-config
 data:
-  # --- OBP Application Configuration ---
-  CONNECTOR: "mapped"
-  HOSTNAME: "http://localhost:8080"
-  ALLOW_PUBLIC_VIEWS: "true"
-  ALLOW_SANDBOX_DATA_IMPORT: "true"
-  ALLOW_SANDBOX_ACCOUNT_CREATION: "true"
-  ALLOW_ACCOUNT_DELETION: "true"
-  PAYMENTS_ENABLED: "false"
-  IMPORTER_SECRET: "change_me"
-  SANDBOX_DATA_IMPORT_SECRET: "change_me"
-  FREE_FORM_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  SEPA_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  SEPA_CREDIT_TRANSFERS_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  CARD_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  AGENT_CASH_WITHDRAWAL_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  COUNTERPARTY_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  ACCOUNT_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  SIMPLE_OTP_INSTRUCTION_TRANSPORT: "dummy"
-  TRANSACTIONREQUESTS_SUPPORTED_TYPES: "SANDBOX_TAN,COUNTERPARTY,SEPA,ACCOUNT_OTP,ACCOUNT,SIMPLE,AGENT_CASH_WITHDRAWAL,CARD"
-  STARCONNECTOR_SUPPORTED_TYPES: "mapped,internal"
-  MESSAGEQUEUE_CREATEBANKACCOUNTS: "false"
-  MESSAGEQUEUE_UPDATEBANKACCOUNTSTRANSACTION: "false"
+  default.props: |
+    # --- Run Mode ---
+    run.mode=production
+
+    # --- Database Configuration ---
+    db.driver=org.postgresql.Driver
+    db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+    db.user=postgres
+    db.password=postgres
+
+    # --- OBP Application Configuration ---
+    connector=mapped
+    hostname=http://localhost:8080
+    allow_public_views=true
+    allow_sandbox_data_import=true
+    allow_sandbox_account_creation=true
+    allow_account_deletion=true
+    payments_enabled=false
+    importer_secret=change_me
+    sandbox_data_import_secret=change_me
