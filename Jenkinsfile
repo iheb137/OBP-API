@@ -22,11 +22,34 @@ pipeline {
 
         stage('Package Application') {
             steps {
+                // Créer le fichier default.props pour la configuration de l'application
+                sh '''
+                cat > obp-api/src/main/resources/props/default.props <<EOL
+# --- Run Mode ---
+run.mode=production
+
+# --- Database Configuration ---
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+db.user=postgres
+db.password=postgres
+
+# --- OBP Application Configuration ---
+connector=mapped
+hostname=http://localhost:8080
+allow_public_views=true
+allow_sandbox_data_import=true
+allow_sandbox_account_creation=true
+allow_account_deletion=true
+payments_enabled=false
+importer_secret=change_me
+sandbox_data_import_secret=change_me
+EOL
+                '''
+                
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
-                // Rename the WAR to ROOT.war for Tomcat
-                sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
             }
         }
 
