@@ -1,0 +1,7 @@
+run.mode=production
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+db.user=postgres
+db.password=TON_MDP
+connector=mapped
+server_mode=apis,portal
