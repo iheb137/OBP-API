@@ -13,7 +13,7 @@ spec:
         app: obp-api
     spec:
       imagePullSecrets:
-      - name: dockerhub-creds  # <-- LIGNE AJOUTÉE POUR AUTORISER LE TÉLÉCHARGEMENT
+      - name: dockerhub-creds
       initContainers:
       - name: wait-for-postgres
         image: busybox:1.28
