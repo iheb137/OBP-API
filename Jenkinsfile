@@ -20,12 +20,12 @@ pipeline {
             }
         }
 
-        stage('Package Application') {
+        stage('Package Application' ) {
             steps {
                 sh '''
                 mkdir -p obp-api/src/main/resources/props
                 cat > obp-api/src/main/resources/props/default.props <<EOL
-# --- Run Mode ---
+# --- Run Mode (CRUCIAL pour éviter les erreurs Lift) ---
 run.mode=production
 
 # --- Database Configuration ---
@@ -44,10 +44,11 @@ allow_account_deletion=true
 payments_enabled=false
 importer_secret=change_me
 sandbox_data_import_secret=change_me
+server_mode=apis,portal
 EOL
                 '''
-
-                withMaven(mavenSettingsConfig: 'obp-maven-settings') {
+                
+                withMaven(mavenSettingsConfig: 'obp-maven-settings' ) {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
             }
@@ -55,22 +56,33 @@ EOL
 
         stage('Build Docker Image') {
             steps {
-                // 🔥 Copier le props dans /props de l’image
-                sh """
-                echo 'FROM tomcat:9.0-jdk11
-                COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
-                COPY obp-api/src/main/resources/props/default.props /props/default.props
-                ' > Dockerfile
-                """
+                // Créer un Dockerfile dynamique qui copie le props dans l'image
+                sh '''
+                cat > Dockerfile <<EOL
+FROM tomcat:9.0-jdk11
 
-                sh "docker build --no-cache -t ${DOCKER_IMAGE} -f Dockerfile ."
+# Copier le WAR
+COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+
+# Copier le fichier de configuration dans /props (OBP l'attend là)
+COPY obp-api/src/main/resources/props/default.props /props/default.props
+
+# Exposer le port
+EXPOSE 8080
+
+# Démarrer Tomcat
+CMD ["catalina.sh", "run"]
+EOL
+                '''
+                
+                sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS) {
+                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS ) {
                         sh "docker push ${DOCKER_IMAGE}"
                     }
                 }
@@ -112,7 +124,7 @@ EOL
                             echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
                             echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
                         """
-
+                        
                         echo "Deploying All Resources..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
