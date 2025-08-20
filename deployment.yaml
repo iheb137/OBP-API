@@ -21,6 +21,7 @@ spec:
       containers:
       - name: obp-api
         image: iheb99/obp-api:latest
+        imagePullPolicy: Always  # <--- AJOUTE CETTE LIGNE ICI
         ports:
         - containerPort: 8080
         volumeMounts:
