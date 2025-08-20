@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: obp-api-config
+data:
+  default.props: |
+    # ---- DB ----
+    db.driver=org.postgresql.Driver
+    db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+    db.user=postgres
+    db.password=${DB_PASSWORD}
+
+    # ---- Mode ----
+    run.mode=production
+
+    # (facultatif) logs un peu verbeux au début
+    # log.config.level=INFO

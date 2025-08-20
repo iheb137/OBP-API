@@ -1,0 +1,20 @@
+# ============================
+# Database configuration
+# ============================
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/obp_api_db
+db.user=obp_api_user
+db.password=${POSTGRES_PASSWORD}
+
+# ============================
+# Application settings
+# ============================
+obp.environment=development
+obp.port=8080
+obp.log.level=INFO
+obp.timezone=UTC
+
+# ============================
+# Liftweb / OBP API Settings
+# ============================
+props.resource=default.props
