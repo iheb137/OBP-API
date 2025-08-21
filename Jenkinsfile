@@ -20,9 +20,47 @@ pipeline {
             }
         }
 
-        stage('Package Application') {
+        stage('Package Application' ) {
             steps {
-                withMaven(mavenSettingsConfig: 'obp-maven-settings') {
+                sh '''
+                # Créer le fichier de configuration avec TOUS les paramètres nécessaires
+                mkdir -p obp-api/src/main/resources/props
+                cat > obp-api/src/main/resources/props/default.props <<EOL
+# --- Run Mode (CRUCIAL pour éviter les erreurs) ---
+run.mode=production
+
+# --- Database Configuration ---
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+db.user=postgres
+db.password=postgres
+
+# --- OBP Application Configuration ---
+connector=mapped
+hostname=http://localhost:8080
+allow_public_views=true
+allow_sandbox_data_import=true
+allow_sandbox_account_creation=true
+allow_account_deletion=true
+payments_enabled=false
+importer_secret=change_me
+sandbox_data_import_secret=change_me
+server_mode=apis,portal
+
+# --- Lift Web Framework Configuration ---
+lift.base_url=http://localhost:8080
+lift.context_path=/
+
+# --- Logging Configuration ---
+log.level=INFO
+EOL
+
+                # Copier aussi dans le répertoire test pour éviter les erreurs de build
+                mkdir -p obp-api/src/test/resources/props
+                cp obp-api/src/main/resources/props/default.props obp-api/src/test/resources/props/test.props
+                '''
+                
+                withMaven(mavenSettingsConfig: 'obp-maven-settings' ) {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
             }
@@ -30,14 +68,40 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build --no-cache -t ${DOCKER_IMAGE} -f Dockerfile ."
+                sh '''
+                # Créer un Dockerfile optimisé pour OBP-API
+                cat > Dockerfile <<EOL
+FROM tomcat:9.0-jdk11
+
+# Supprimer les applications par défaut de Tomcat
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copier le WAR comme ROOT.war (application par défaut)
+COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+
+# Créer le répertoire props et copier la configuration
+RUN mkdir -p /props
+COPY obp-api/src/main/resources/props/default.props /props/default.props
+
+# Variables d'environnement pour OBP
+ENV JAVA_OPTS="-Drun.mode=production -Dprops.resource=props.default"
+
+# Exposer le port
+EXPOSE 8080
+
+# Démarrer Tomcat
+CMD ["catalina.sh", "run"]
+EOL
+                '''
+                
+                sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
             }
         }
 
         stage('Push Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS) {
+                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS ) {
                         sh "docker push ${DOCKER_IMAGE}"
                     }
                 }
@@ -45,21 +109,55 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
+            environment {
+                K8S_CA_CERT_ID = 'k8s-ca-cert-b64'
+                K8S_CLIENT_CERT_ID = 'k8s-client-cert-b64'
+                K8S_CLIENT_KEY_ID = 'k8s-client-key-b64'
+            }
             steps {
-                script {
-                    echo "Déploiement sur Kubernetes avec le contexte minikube..."
-                    sh "kubectl config use-context minikube"
-                    
-                    // appliquer les manifests
-                    sh "kubectl apply -f postgres-secret.yaml"
-                    sh "kubectl apply -f postgres-pv.yaml"
-                    sh "kubectl apply -f postgres-pvc.yaml"
-                    sh "kubectl apply -f postgres-deployment.yaml"
-                    sh "kubectl apply -f postgres-service.yaml"
-                    sh "kubectl apply -f obp-api-configmap.yaml"
-                    sh "kubectl apply -f deployment.yaml"
-
-                    echo "✅ Déploiement terminé avec succès."
+                withCredentials([
+                    string(credentialsId: env.K8S_CA_CERT_ID, variable: 'K8S_CA_CERT'),
+                    string(credentialsId: env.K8S_CLIENT_CERT_ID, variable: 'K8S_CLIENT_CERT'),
+                    string(credentialsId: env.K8S_CLIENT_KEY_ID, variable: 'K8S_CLIENT_KEY')
+                ]) {
+                    script {
+                        def kubeconfig = './kubeconfig_generated.yaml'
+                        sh """
+                            echo "apiVersion: v1" > ${kubeconfig}
+                            echo "clusters:" >> ${kubeconfig}
+                            echo "- cluster:" >> ${kubeconfig}
+                            echo "    certificate-authority-data: \$K8S_CA_CERT" >> ${kubeconfig}
+                            echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
+                            echo "  name: minikube" >> ${kubeconfig}
+                            echo "contexts:" >> ${kubeconfig}
+                            echo "- context:" >> ${kubeconfig}
+                            echo "    cluster: minikube" >> ${kubeconfig}
+                            echo "    user: minikube" >> ${kubeconfig}
+                            echo "  name: minikube" >> ${kubeconfig}
+                            echo "current-context: minikube" >> ${kubeconfig}
+                            echo "kind: Config" >> ${kubeconfig}
+                            echo "preferences: {}" >> ${kubeconfig}
+                            echo "users:" >> ${kubeconfig}
+                            echo "- name: minikube" >> ${kubeconfig}
+                            echo "  user:" >> ${kubeconfig}
+                            echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
+                            echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
+                        """
+                        
+                        echo "Deploying to Kubernetes..."
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
+                        sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
+                        
+                        echo "Deployment successful. Waiting for pods to be ready..."
+                        sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
+                        
+                        echo "Getting service URL..."
+                        sh "kubectl --kubeconfig=${kubeconfig} get services"
+                    }
                 }
             }
         }
