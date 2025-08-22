@@ -40,7 +40,7 @@ connector=mapped
 hostname=http://localhost:8080
 allow_public_views=true
 allow_sandbox_data_import=true
-allow_sandbox_account_creation=true
+allow_account_creation=true
 allow_account_deletion=true
 payments_enabled=false
 importer_secret=change_me
@@ -66,6 +66,8 @@ EOL
                 
                 // Renomme le .war en ROOT.war pour que Docker le trouve
                 sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
+                // Copie les props dans le target pour que Docker les trouve aussi
+                sh 'cp obp-api/src/main/resources/props/default.props obp-api/target/default.props'
             }
         }
 
