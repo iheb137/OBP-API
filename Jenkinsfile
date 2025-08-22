@@ -63,6 +63,9 @@ EOL
                 withMaven(mavenSettingsConfig: 'obp-maven-settings' ) {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
+                
+                // Renomme le .war en ROOT.war pour que Docker le trouve
+                sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
             }
         }
 
