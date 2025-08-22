@@ -20,56 +20,15 @@ pipeline {
             }
         }
 
-        stage('Package Application' ) {
-            steps {
-                sh '''
-                # Créer le fichier de configuration avec TOUS les paramètres nécessaires
-                mkdir -p obp-api/src/main/resources/props
-                cat > obp-api/src/main/resources/props/default.props <<EOL
-# --- Run Mode (CRUCIAL pour éviter les erreurs) ---
-run.mode=production
-
-# --- Database Configuration ---
-db.driver=org.postgresql.Driver
-db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
-db.user=postgres
-db.password=postgres
-
-# --- OBP Application Configuration ---
-connector=mapped
-hostname=http://localhost:8080
-allow_public_views=true
-allow_sandbox_data_import=true
-allow_account_creation=true
-allow_account_deletion=true
-payments_enabled=false
-importer_secret=change_me
-sandbox_data_import_secret=change_me
-server_mode=apis,portal
-
-# --- Lift Web Framework Configuration ---
-lift.base_url=http://localhost:8080
-lift.context_path=/
-
-# --- Logging Configuration ---
-log.level=INFO
-EOL
-
-                # Copier aussi dans le répertoire test pour éviter les erreurs de build
-                mkdir -p obp-api/src/test/resources/props
-                cp obp-api/src/main/resources/props/default.props obp-api/src/test/resources/props/test.props
-                '''
-                
-                withMaven(mavenSettingsConfig: 'obp-maven-settings' ) {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am'
-                }
-                
-                // Renomme le .war en ROOT.war pour que Docker le trouve
-                sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
-                // Copie les props dans le target pour que Docker les trouve aussi
-                sh 'cp obp-api/src/main/resources/props/default.props obp-api/target/default.props'
-            }
+        stage('Package Application') {
+    steps {
+        // No need to create props files, they are in Git.
+        // Just build the project.
+        withMaven(mavenSettingsConfig: 'obp-maven-settings') {
+            sh 'mvn -B clean package -DskipTests -pl obp-api -am'
         }
+    }
+}
 
         stage('Build Docker Image') {
             steps {
