@@ -1,13 +1,13 @@
-FROM tomcat:9.0-jdk11-openjdk
+FROM tomcat:9.0-jdk11
 
 RUN rm -rf /usr/local/tomcat/webapps/*
 
-# Copier le WAR
-COPY obp-api/target/*.war /usr/local/tomcat/webapps/ROOT.war
+COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+RUN mkdir -p /props
+COPY obp-api/target/default.props /props/default.props
 
-# Copier la config props
-COPY ./obp-api/src/main/resources/default.props /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props
-
+# Exposer le port de Tomcat
 EXPOSE 8080
 
+# Lancer Tomcat
 CMD ["catalina.sh", "run"]
