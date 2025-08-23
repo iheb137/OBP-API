@@ -1,16 +1,16 @@
 FROM tomcat:9.0-jdk11
 
-# Clean default apps
+# Nettoyer les applications par défaut de Tomcat
 RUN rm -rf /usr/local/tomcat/webapps/*
 
-# Copy the WAR file and rename it to ROOT.war
+# Copier le fichier .war (produit par Maven) et le renommer en ROOT.war
 COPY obp-api/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
-# Copy the configuration file from the source code into the application's classpath
+# Copier le fichier de configuration depuis le code source vers le classpath de l'application
 COPY obp-api/src/main/resources/props/default.props /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props
 
-# Expose Tomcat's port
+# Exposer le port de Tomcat
 EXPOSE 8080
 
-# Run Tomcat
+# Lancer Tomcat
 CMD ["catalina.sh", "run"]
