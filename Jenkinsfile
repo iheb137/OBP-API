@@ -19,44 +19,21 @@ pipeline {
                 git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
-     stage('Package Application') {
+     
+        stage('Package Application') {
             steps {
-                // Le fichier props.default est déjà dans Git, on n'a pas besoin de le créer ici.
-                // On compile simplement l'application.
+                // On compile l'application
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
+                // ETAPE CRUCIALE : On renomme le WAR pour que le Dockerfile le trouve
+                sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
             }
         }
        
         stage('Build Docker Image') {
             steps {
-                sh '''
-                # Créer un Dockerfile optimisé pour OBP-API
-                cat > Dockerfile <<EOL
-FROM tomcat:9.0-jdk11
-
-# Supprimer les applications par défaut de Tomcat
-RUN rm -rf /usr/local/tomcat/webapps/*
-
-# Copier le WAR comme ROOT.war (application par défaut)
-COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
-
-# Créer le répertoire props et copier la configuration
-RUN mkdir -p /props
-COPY obp-api/src/main/resources/props/default.props /props/default.props
-
-# Variables d'environnement pour OBP
-ENV JAVA_OPTS="-Drun.mode=production -Dprops.resource=props.default"
-
-# Exposer le port
-EXPOSE 8080
-
-# Démarrer Tomcat
-CMD ["catalina.sh", "run"]
-EOL
-                '''
-                
+                // On utilise le Dockerfile qui est dans le dépôt Git
                 sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
             }
         }
@@ -126,4 +103,3 @@ EOL
         }
     }
 }
-// Force workspace refresh
