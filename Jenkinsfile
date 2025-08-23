@@ -19,17 +19,16 @@ pipeline {
                 git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
-
-        stage('Package Application') {
-    steps {
-        // No need to create props files, they are in Git.
-        // Just build the project.
-        withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-            sh 'mvn -B clean package -DskipTests -pl obp-api -am'
+     stage('Package Application') {
+            steps {
+                // Le fichier props.default est déjà dans Git, on n'a pas besoin de le créer ici.
+                // On compile simplement l'application.
+                withMaven(mavenSettingsConfig: 'obp-maven-settings') {
+                    sh 'mvn -B clean package -DskipTests -pl obp-api -am'
+                }
+            }
         }
-    }
-}
-
+       
         stage('Build Docker Image') {
             steps {
                 sh '''
