@@ -20,11 +20,12 @@ pipeline {
             }
         }
      
-               stage('Package Application') {
+        stage('Package Application') {
             steps {
                 sh '''
                 # Créer le fichier de configuration directement à la racine
-                cat > default.props <<EOL
+                mkdir -p obp-api/src/main/resources/props
+                cat > obp-api/src/main/resources/props/default.props <<EOL
 # --- Run Mode (CRUCIAL pour éviter les erreurs) ---
 run.mode=production
 
@@ -55,49 +56,70 @@ log.level=INFO
 EOL
                 '''
                 
-                withMaven(mavenSettingsConfig: 'obp-maven-settings' ) {
+                withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
+                // Renommer le WAR généré pour correspondre au Dockerfile
+                sh '''
+                    if [ -f obp-api/target/obp-api-1.10.1.war ]; then
+                        mv obp-api/target/obp-api-1.10.1.war obp-api/target/ROOT.war
+                        echo "WAR renommé en ROOT.war avec succès."
+                    else
+                        echo "Erreur : WAR file obp-api-1.10.1.war non trouvé !"
+                        exit 1
+                    fi
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 sh '''
-                # Créer un Dockerfile optimisé pour OBP-API
+                # Vérifier les fichiers avant build
+                if [ ! -f obp-api/src/main/resources/props/default.props ]; then
+                    echo "Erreur : default.props non trouvé !"
+                    exit 1
+                fi
+                if [ ! -f obp-api/target/ROOT.war ]; then
+                    echo "Erreur : ROOT.war non trouvé !"
+                    exit 1
+                fi
+
+                # Créer un Dockerfile multi-stage optimisé
                 cat > Dockerfile <<EOL
+# Stage 1: Build avec Maven
+FROM maven:3.8.6-jdk-11 AS builder
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests -pl obp-api -am
+
+# Stage 2: Runtime avec Tomcat
 FROM tomcat:9.0-jdk11
-
-# Supprimer les applications par défaut de Tomcat
 RUN rm -rf /usr/local/tomcat/webapps/*
-
-# Copier le WAR comme ROOT.war (application par défaut)
-COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
-
-# Créer le répertoire props et copier la configuration
-RUN mkdir -p /props
-COPY default.props /props/default.props
-
-# Variables d'environnement pour OBP
-ENV JAVA_OPTS="-Drun.mode=production -Dprops.path=/props/default.props"
-
-# Exposer le port
+COPY --from=builder /app/obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+COPY --from=builder /app/obp-api/src/main/resources/props/default.props /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props
+ENV JAVA_OPTS="-Drun.mode=production -Dprops.path=/usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props"
 EXPOSE 8080
-
-# Démarrer Tomcat
 CMD ["catalina.sh", "run"]
 EOL
                 '''
                 
                 sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
             }
+            post {
+                success {
+                    echo "Image Docker ${DOCKER_IMAGE} construite avec succès."
+                }
+                failure {
+                    echo "Échec du build Docker : Vérifiez les chemins des fichiers WAR et props."
+                }
+            }
         }
-
 
         stage('Push Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS ) {
+                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS) {
                         sh "docker push ${DOCKER_IMAGE}"
                     }
                 }
@@ -140,7 +162,7 @@ EOL
                             echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
                         """
                         
-                        echo "Deploying to Kubernetes..."
+                        echo "Déploiement vers Kubernetes..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
@@ -148,10 +170,10 @@ EOL
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
                         
-                        echo "Deployment successful. Waiting for pods to be ready..."
+                        echo "Déploiement terminé. Attente de l'état prêt des pods..."
                         sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
                         
-                        echo "Getting service URL..."
+                        echo "Récupération de l'URL du service..."
                         sh "kubectl --kubeconfig=${kubeconfig} get services"
                     }
                 }
