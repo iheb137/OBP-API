@@ -1,3 +1,26 @@
-obp-api/src/main/resources/props/*
+.git
+target/
+*.log
+.idea/
+*.iml
+.DS_Store
+.settings/
+.metals/
+.vscode/
+.classpath
+.project
+.cache
+.java-version
+.scannerwork
+obp-api/src/main/scripts/kafka/logs/
+obp-api/src/main/scripts/kafka/tmp/
+obp-api/src/test/resources/
+obp-commons/src/main/resources/git.properties
+obp-api2/
+# Inclure uniquement les fichiers nécessaires dans resources
+obp-api/src/main/resources/*
+!obp-api/src/main/resources/props/
+!obp-api/src/main/resources/props/default.props
 !obp-api/src/main/resources/props/sample.props.template
 !obp-api/src/main/resources/props/test.default.props.template
+!obp-api/src/main/resources/log4j.properties
