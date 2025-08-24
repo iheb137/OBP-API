@@ -2,11 +2,11 @@ pipeline {
     agent {
         docker {
             image 'iheb99/maven-docker-kubectl:latest'
-            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host -v maven-cache:/root/.m2' // Cache Maven persistant
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host -v maven-cache:/root/.m2'
         }
     }
     options {
-        timeout(time: 45, unit: 'MINUTES') // Timeout pour le premier build
+        timeout(time: 20, unit: 'MINUTES') // Réduit après premier build réussi
     }
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
@@ -49,6 +49,34 @@ lift.base_url=http://localhost:8080
 lift.context_path=/
 # --- Logging Configuration ---
 log.level=INFO
+EOL
+                # Configurer settings.xml pour Maven
+                mkdir -p ~/.m2
+                cat > ~/.m2/settings.xml <<EOL
+<settings>
+    <mirrors>
+        <mirror>
+            <id>central</id>
+            <name>Central Repository</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <mirrorOf>central</mirrorOf>
+        </mirror>
+    </mirrors>
+    <profiles>
+        <profile>
+            <id>jitpack</id>
+            <repositories>
+                <repository>
+                    <id>jitpack.io</id>
+                    <url>https://jitpack.io</url>
+                </repository>
+            </repositories>
+        </profile>
+    </profiles>
+    <activeProfiles>
+        <activeProfile>jitpack</activeProfile>
+    </activeProfiles>
+</settings>
 EOL
                 '''
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
