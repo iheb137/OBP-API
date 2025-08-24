@@ -20,23 +20,79 @@ pipeline {
             }
         }
      
-        stage('Package Application') {
+               stage('Package Application') {
             steps {
-                // On compile l'application
-                withMaven(mavenSettingsConfig: 'obp-maven-settings') {
+                sh '''
+                # Créer le fichier de configuration directement à la racine
+                cat > default.props <<EOL
+# --- Run Mode (CRUCIAL pour éviter les erreurs) ---
+run.mode=production
+
+# --- Database Configuration ---
+db.driver=org.postgresql.Driver
+db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
+db.user=postgres
+db.password=postgres
+
+# --- OBP Application Configuration ---
+connector=mapped
+hostname=http://localhost:8080
+allow_public_views=true
+allow_sandbox_data_import=true
+allow_sandbox_account_creation=true
+allow_account_deletion=true
+payments_enabled=false
+importer_secret=change_me
+sandbox_data_import_secret=change_me
+server_mode=apis,portal
+
+# --- Lift Web Framework Configuration ---
+lift.base_url=http://localhost:8080
+lift.context_path=/
+
+# --- Logging Configuration ---
+log.level=INFO
+EOL
+                '''
+                
+                withMaven(mavenSettingsConfig: 'obp-maven-settings' ) {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
-                // ETAPE CRUCIALE : On renomme le WAR pour que le Dockerfile le trouve
-                sh 'mv obp-api/target/*.war obp-api/target/ROOT.war'
             }
         }
-       
+
         stage('Build Docker Image') {
             steps {
-                // On utilise le Dockerfile qui est dans le dépôt Git
+                sh '''
+                # Créer un Dockerfile optimisé pour OBP-API
+                cat > Dockerfile <<EOL
+FROM tomcat:9.0-jdk11
+
+# Supprimer les applications par défaut de Tomcat
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+# Copier le WAR comme ROOT.war (application par défaut)
+COPY obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+
+# Créer le répertoire props et copier la configuration
+RUN mkdir -p /props
+COPY default.props /props/default.props
+
+# Variables d'environnement pour OBP
+ENV JAVA_OPTS="-Drun.mode=production -Dprops.path=/props/default.props"
+
+# Exposer le port
+EXPOSE 8080
+
+# Démarrer Tomcat
+CMD ["catalina.sh", "run"]
+EOL
+                '''
+                
                 sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
             }
         }
+
 
         stage('Push Docker Image') {
             steps {
