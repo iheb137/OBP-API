@@ -72,49 +72,30 @@ EOL
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh '''
-                # Vérifier les fichiers avant build
-                if [ ! -f obp-api/src/main/resources/props/default.props ]; then
-                    echo "Erreur : default.props non trouvé !"
-                    exit 1
-                fi
-                if [ ! -f obp-api/target/ROOT.war ]; then
-                    echo "Erreur : ROOT.war non trouvé !"
-                    exit 1
-                fi
-
-                # Créer un Dockerfile multi-stage optimisé
-                cat > Dockerfile <<EOL
-# Stage 1: Build avec Maven
-FROM maven:3.8.6-jdk-11 AS builder
-WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests -pl obp-api -am
-
-# Stage 2: Runtime avec Tomcat
-FROM tomcat:9.0-jdk11
-RUN rm -rf /usr/local/tomcat/webapps/*
-COPY --from=builder /app/obp-api/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
-COPY --from=builder /app/obp-api/src/main/resources/props/default.props /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props
-ENV JAVA_OPTS="-Drun.mode=production -Dprops.path=/usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props"
-EXPOSE 8080
-CMD ["catalina.sh", "run"]
-EOL
-                '''
-                
-                sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
-            }
-            post {
-                success {
-                    echo "Image Docker ${DOCKER_IMAGE} construite avec succès."
-                }
-                failure {
-                    echo "Échec du build Docker : Vérifiez les chemins des fichiers WAR et props."
-                }
-            }
+       stage('Build Docker Image') {
+    steps {
+        sh '''
+        # Vérifier les fichiers avant build
+        if [ ! -f obp-api/src/main/resources/props/default.props ]; then
+            echo "Erreur : default.props non trouvé !"
+            exit 1
+        fi
+        if [ ! -f obp-api/target/obp-api-1.10.1.war ]; then
+            echo "Erreur : WAR file non trouvé !"
+            exit 1
+        fi
+        '''
+        sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
+    }
+    post {
+        success {
+            echo "Image Docker ${DOCKER_IMAGE} construite avec succès."
         }
+        failure {
+            echo "Échec du build Docker : Vérifiez les chemins des fichiers WAR et props."
+        }
+    }
+}
 
         stage('Push Docker Image') {
             steps {
