@@ -6,7 +6,7 @@ pipeline {
         }
     }
     options {
-        timeout(time: 45, unit: 'MINUTES') // Timeout augmenté pour le premier build
+        timeout(time: 45, unit: 'MINUTES') // Timeout pour le premier build
     }
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
@@ -52,7 +52,7 @@ log.level=INFO
 EOL
                 '''
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -Dmaven.repo.local=/root/.m2/repository' // Utiliser cache persistant
+                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -Dmaven.repo.local=/root/.m2/repository'
                 }
                 sh '''
                 # Vérifier et renommer le WAR
@@ -79,7 +79,7 @@ EOL
                     exit 1
                 fi
                 '''
-                sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
             post {
                 success {
@@ -133,7 +133,20 @@ EOL
                             echo "  user:" >> ${kubeconfig}
                             echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
                             echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml
+                            echo "Deployment successful. Waiting for pods to be ready..."
+                            kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s
+                            echo "Getting service URL..."
+                            kubectl --kubeconfig=${kubeconfig} get services
                         """
-                        echo "Deploying to Kubernetes..."
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
-                        sh "kubectl --kubeconfig
+                    }
+                }
+            }
+        }
+    }
+}
