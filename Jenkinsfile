@@ -5,13 +5,14 @@ pipeline {
             args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host'
         }
     }
-
+    options {
+        timeout(time: 30, unit: 'MINUTES') // Timeout global de 30 minutes
+    }
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
         DOCKER_CREDENTIALS = "docker-hub-creds"
         GIT_BRANCH = "develop"
     }
-
     stages {
         stage('Checkout') {
             steps {
@@ -19,22 +20,19 @@ pipeline {
                 git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
-     
         stage('Package Application') {
             steps {
                 sh '''
-                # Créer le fichier de configuration directement à la racine
+                # Créer le fichier de configuration
                 mkdir -p obp-api/src/main/resources/props
                 cat > obp-api/src/main/resources/props/default.props <<EOL
-# --- Run Mode (CRUCIAL pour éviter les erreurs) ---
+# --- Run Mode ---
 run.mode=production
-
 # --- Database Configuration ---
 db.driver=org.postgresql.Driver
 db.url=jdbc:postgresql://postgres-service:5432/postgres?sslmode=disable
 db.user=postgres
 db.password=postgres
-
 # --- OBP Application Configuration ---
 connector=mapped
 hostname=http://localhost:8080
@@ -46,22 +44,18 @@ payments_enabled=false
 importer_secret=change_me
 sandbox_data_import_secret=change_me
 server_mode=apis,portal
-
 # --- Lift Web Framework Configuration ---
 lift.base_url=http://localhost:8080
 lift.context_path=/
-
 # --- Logging Configuration ---
 log.level=INFO
 EOL
                 '''
-                
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
-                
                 sh '''
-                # Vérifier et renommer le WAR généré
+                # Vérifier et renommer le WAR
                 if [ -f obp-api/target/obp-api-1.10.1.war ]; then
                     mv obp-api/target/obp-api-1.10.1.war obp-api/target/ROOT.war
                     echo "WAR renommé en ROOT.war avec succès."
@@ -72,7 +66,6 @@ EOL
                 '''
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -86,7 +79,6 @@ EOL
                     exit 1
                 fi
                 '''
-                
                 sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
             }
             post {
@@ -98,7 +90,6 @@ EOL
                 }
             }
         }
-
         stage('Push Docker Image') {
             steps {
                 script {
@@ -108,7 +99,6 @@ EOL
                 }
             }
         }
-
         stage('Deploy to Kubernetes') {
             environment {
                 K8S_CA_CERT_ID = 'k8s-ca-cert-b64'
@@ -144,7 +134,6 @@ EOL
                             echo "    client-certificate-data: \$K8S_CLIENT_CERT" >> ${kubeconfig}
                             echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
                         """
-                        
                         echo "Deploying to Kubernetes..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
@@ -152,10 +141,8 @@ EOL
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
-                        
                         echo "Deployment successful. Waiting for pods to be ready..."
                         sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
-                        
                         echo "Getting service URL..."
                         sh "kubectl --kubeconfig=${kubeconfig} get services"
                     }
