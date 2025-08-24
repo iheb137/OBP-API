@@ -1,8 +1,8 @@
 *.class
-*.db
+.db
 .DS_Store
-*.scala.orig
-*.log
+.scala.orig
+.log
 .gitignore
 .idea
 .settings
@@ -13,11 +13,12 @@
 .cache
 target
 obp-api/src/main/resources/
-obp-api/src/test/resources/**
+!obp-api/src/main/resources/props/default.props
+obp-api/src/test/resources/
 !obp-api/src/test/resources/frozen_type_meta_data
-*.iml
+.iml
 obp-api/src/main/resources/log4j.properties
-obp-api/src/main/scripts/kafka/kafka_*
+obp-api/src/main/scripts/kafka/kafka_
 obp-api/src/main/scripts/kafka/logs/
 obp-api/src/main/scripts/kafka/tmp/
 obp-api/src/main/scala/code/api/v3_0_0/custom/
