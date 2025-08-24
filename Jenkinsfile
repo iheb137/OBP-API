@@ -2,11 +2,11 @@ pipeline {
     agent {
         docker {
             image 'iheb99/maven-docker-kubectl:latest'
-            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host -v maven-cache:/root/.m2' // Cache Maven persistant
         }
     }
     options {
-        timeout(time: 30, unit: 'MINUTES') // Timeout global de 30 minutes
+        timeout(time: 45, unit: 'MINUTES') // Timeout augmenté pour le premier build
     }
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
@@ -52,7 +52,7 @@ log.level=INFO
 EOL
                 '''
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am'
+                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -Dmaven.repo.local=/root/.m2/repository' // Utiliser cache persistant
                 }
                 sh '''
                 # Vérifier et renommer le WAR
@@ -136,18 +136,4 @@ EOL
                         """
                         echo "Deploying to Kubernetes..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
-                        sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
-                        echo "Deployment successful. Waiting for pods to be ready..."
-                        sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
-                        echo "Getting service URL..."
-                        sh "kubectl --kubeconfig=${kubeconfig} get services"
-                    }
-                }
-            }
-        }
-    }
-}
+                        sh "kubectl --kubeconfig
