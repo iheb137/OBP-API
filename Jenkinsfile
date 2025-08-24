@@ -6,7 +6,7 @@ pipeline {
         }
     }
     options {
-        timeout(time: 20, unit: 'MINUTES') // Réduit après premier build réussi
+        timeout(time: 20, unit: 'MINUTES')
     }
     environment {
         DOCKER_IMAGE = "iheb99/obp-api:latest"
@@ -69,6 +69,10 @@ EOL
                 <repository>
                     <id>jitpack.io</id>
                     <url>https://jitpack.io</url>
+                </repository>
+                <repository>
+                    <id>openbankproject</id>
+                    <url>https://raw.githubusercontent.com/OpenBankProject/OBP-M2-REPO/master</url>
                 </repository>
             </repositories>
         </profile>
