@@ -2,7 +2,7 @@
 FROM maven:3.8.6-jdk-11 AS builder
 WORKDIR /app
 COPY . .
-# Pas besoin de mvn dependency:go-offline, les dépendances sont déjà résolues
+# Pas besoin de mvn dependency:go-offline, les dépendances sont résolues dans Package Application
 
 # Stage 2: Runtime avec Tomcat
 FROM tomcat:9.0-jdk11
