@@ -59,43 +59,45 @@ EOL
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am'
                 }
-                // Renommer le WAR généré pour correspondre au Dockerfile
+                
                 sh '''
-                    if [ -f obp-api/target/obp-api-1.10.1.war ]; then
-                        mv obp-api/target/obp-api-1.10.1.war obp-api/target/ROOT.war
-                        echo "WAR renommé en ROOT.war avec succès."
-                    else
-                        echo "Erreur : WAR file obp-api-1.10.1.war non trouvé !"
-                        exit 1
-                    fi
+                # Vérifier et renommer le WAR généré
+                if [ -f obp-api/target/obp-api-1.10.1.war ]; then
+                    mv obp-api/target/obp-api-1.10.1.war obp-api/target/ROOT.war
+                    echo "WAR renommé en ROOT.war avec succès."
+                else
+                    echo "Erreur : WAR file obp-api-1.10.1.war non trouvé !"
+                    exit 1
+                fi
                 '''
             }
         }
 
-       stage('Build Docker Image') {
-    steps {
-        sh '''
-        # Vérifier les fichiers avant build
-        if [ ! -f obp-api/src/main/resources/props/default.props ]; then
-            echo "Erreur : default.props non trouvé !"
-            exit 1
-        fi
-        if [ ! -f obp-api/target/obp-api-1.10.1.war ]; then
-            echo "Erreur : WAR file non trouvé !"
-            exit 1
-        fi
-        '''
-        sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
-    }
-    post {
-        success {
-            echo "Image Docker ${DOCKER_IMAGE} construite avec succès."
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                # Vérifier les fichiers avant build
+                if [ ! -f obp-api/src/main/resources/props/default.props ]; then
+                    echo "Erreur : default.props non trouvé !"
+                    exit 1
+                fi
+                if [ ! -f obp-api/target/ROOT.war ]; then
+                    echo "Erreur : ROOT.war non trouvé après renommage !"
+                    exit 1
+                fi
+                '''
+                
+                sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
+            }
+            post {
+                success {
+                    echo "Image Docker ${DOCKER_IMAGE} construite avec succès."
+                }
+                failure {
+                    echo "Échec du build Docker : Vérifiez les chemins des fichiers WAR et props."
+                }
+            }
         }
-        failure {
-            echo "Échec du build Docker : Vérifiez les chemins des fichiers WAR et props."
-        }
-    }
-}
 
         stage('Push Docker Image') {
             steps {
@@ -143,7 +145,7 @@ EOL
                             echo "    client-key-data: \$K8S_CLIENT_KEY" >> ${kubeconfig}
                         """
                         
-                        echo "Déploiement vers Kubernetes..."
+                        echo "Deploying to Kubernetes..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml"
@@ -151,10 +153,10 @@ EOL
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml"
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml"
                         
-                        echo "Déploiement terminé. Attente de l'état prêt des pods..."
+                        echo "Deployment successful. Waiting for pods to be ready..."
                         sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
                         
-                        echo "Récupération de l'URL du service..."
+                        echo "Getting service URL..."
                         sh "kubectl --kubeconfig=${kubeconfig} get services"
                     }
                 }
