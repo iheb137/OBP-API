@@ -21,7 +21,9 @@ obp-api/src/test/resources/
 !obp-api/src/test/resources/frozen_type_meta_data
 /obp-commons/src/main/resources/git.properties
 /obp-api2/
-# Inclure uniquement les fichiers nécessaires dans resources
+# Inclure uniquement les fichiers nécessaires dans resourcesca.crt
+token.txt
 obp-api/src/main/resources/*
 !obp-api/src/main/resources/props/
 !obp-api/src/main/resources/log4j.properties
+
