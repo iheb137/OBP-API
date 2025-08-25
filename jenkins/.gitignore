@@ -1,0 +1,24 @@
+# Fichiers et répertoires à ignorer pour Jenkins
+
+# Données Jenkins
+jenkins_home/
+
+# Fichiers de configuration sensibles
+*.env
+*.key
+*.pem
+*.jks
+*.p12
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.log
+
+# Fichiers de sauvegarde
+*.bak
+*~
+
+# Fichiers spécifiques à l'OS
+.DS_Store
+Thumbs.db
