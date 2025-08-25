@@ -5,14 +5,17 @@ pipeline {
             args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host -v maven-cache:/root/.m2'
         }
     }
+
     options {
         timeout(time: 20, unit: 'MINUTES')
     }
+
     environment {
-        DOCKER_IMAGE = "iheb99/obp-api:latest"
+        DOCKER_IMAGE      = "iheb99/obp-api:latest"
         DOCKER_CREDENTIALS = "docker-hub-creds"
-        GIT_BRANCH = "develop"
+        GIT_BRANCH        = "develop"
     }
+
     stages {
         stage('Checkout') {
             steps {
@@ -20,6 +23,7 @@ pipeline {
                 git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
+
         stage('Package Application') {
             steps {
                 sh '''
@@ -50,6 +54,7 @@ lift.context_path=/
 # --- Logging Configuration ---
 log.level=INFO
 EOL
+
                 # Configurer settings.xml pour Maven
                 mkdir -p ~/.m2
                 cat > ~/.m2/settings.xml <<EOL
@@ -83,9 +88,11 @@ EOL
 </settings>
 EOL
                 '''
+
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
                     sh 'mvn -B clean package -DskipTests -pl obp-api -am -Dmaven.repo.local=/root/.m2/repository'
                 }
+
                 sh '''
                 # Vérifier et renommer le WAR
                 if [ -f obp-api/target/obp-api-1.10.1.war ]; then
@@ -98,6 +105,7 @@ EOL
                 '''
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 sh '''
@@ -122,6 +130,7 @@ EOL
                 }
             }
         }
+
         stage('Push Docker Image') {
             steps {
                 script {
@@ -131,54 +140,57 @@ EOL
                 }
             }
         }
-       stage('Deploy to Kubernetes') {
-    environment {
-        K8S_CA_CERT_ID     = 'minikube-ca-cert'
-        K8S_CLIENT_CERT_ID = 'minikube-client-cert'
-        K8S_CLIENT_KEY_ID  = 'minikube-client-key'
-    }
-    steps {
-        withCredentials([
-            file(credentialsId: env.K8S_CA_CERT_ID, variable: 'K8S_CA_CERT_FILE'),
-            file(credentialsId: env.K8S_CLIENT_CERT_ID, variable: 'K8S_CLIENT_CERT_FILE'),
-            file(credentialsId: env.K8S_CLIENT_KEY_ID, variable: 'K8S_CLIENT_KEY_FILE')
-        ]) {
-            script {
-                def kubeconfig = './kubeconfig_generated.yaml'
-                sh """
-                    echo "apiVersion: v1" > ${kubeconfig}
-                    echo "clusters:" >> ${kubeconfig}
-                    echo "- cluster:" >> ${kubeconfig}
-                    echo "    certificate-authority: \$K8S_CA_CERT_FILE" >> ${kubeconfig}
-                    echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
-                    echo "  name: minikube" >> ${kubeconfig}
-                    echo "contexts:" >> ${kubeconfig}
-                    echo "- context:" >> ${kubeconfig}
-                    echo "    cluster: minikube" >> ${kubeconfig}
-                    echo "    user: minikube" >> ${kubeconfig}
-                    echo "  name: minikube" >> ${kubeconfig}
-                    echo "current-context: minikube" >> ${kubeconfig}
-                    echo "kind: Config" >> ${kubeconfig}
-                    echo "preferences: {}" >> ${kubeconfig}
-                    echo "users:" >> ${kubeconfig}
-                    echo "- name: minikube" >> ${kubeconfig}
-                    echo "  user:" >> ${kubeconfig}
-                    echo "    client-certificate: \$K8S_CLIENT_CERT_FILE" >> ${kubeconfig}
-                    echo "    client-key: \$K8S_CLIENT_KEY_FILE" >> ${kubeconfig}
-                    
-                    kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml
-                    kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml
-                    kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml
-                    kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml
-                    kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml
-                    kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml
-                    
-                    echo "Deployment successful. Waiting for pods to be ready..."
-                    kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s
-                    
-                    echo "Getting service URL..."
-                    kubectl --kubeconfig=${kubeconfig} get services
-                """
+
+        stage('Deploy to Kubernetes') {
+            environment {
+                K8S_CA_CERT_ID     = 'minikube-ca-cert'
+                K8S_CLIENT_CERT_ID = 'minikube-client-cert'
+                K8S_CLIENT_KEY_ID  = 'minikube-client-key'
+            }
+            steps {
+                withCredentials([
+                    file(credentialsId: env.K8S_CA_CERT_ID, variable: 'K8S_CA_CERT_FILE'),
+                    file(credentialsId: env.K8S_CLIENT_CERT_ID, variable: 'K8S_CLIENT_CERT_FILE'),
+                    file(credentialsId: env.K8S_CLIENT_KEY_ID, variable: 'K8S_CLIENT_KEY_FILE')
+                ]) {
+                    script {
+                        def kubeconfig = './kubeconfig_generated.yaml'
+                        sh """
+                            echo "apiVersion: v1" > ${kubeconfig}
+                            echo "clusters:" >> ${kubeconfig}
+                            echo "- cluster:" >> ${kubeconfig}
+                            echo "    certificate-authority: \$K8S_CA_CERT_FILE" >> ${kubeconfig}
+                            echo "    server: https://192.168.49.2:8443" >> ${kubeconfig}
+                            echo "  name: minikube" >> ${kubeconfig}
+                            echo "contexts:" >> ${kubeconfig}
+                            echo "- context:" >> ${kubeconfig}
+                            echo "    cluster: minikube" >> ${kubeconfig}
+                            echo "    user: minikube" >> ${kubeconfig}
+                            echo "  name: minikube" >> ${kubeconfig}
+                            echo "current-context: minikube" >> ${kubeconfig}
+                            echo "kind: Config" >> ${kubeconfig}
+                            echo "preferences: {}" >> ${kubeconfig}
+                            echo "users:" >> ${kubeconfig}
+                            echo "- name: minikube" >> ${kubeconfig}
+                            echo "  user:" >> ${kubeconfig}
+                            echo "    client-certificate: \$K8S_CLIENT_CERT_FILE" >> ${kubeconfig}
+                            echo "    client-key: \$K8S_CLIENT_KEY_FILE" >> ${kubeconfig}
+                            
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-secret.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-pv.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-pvc.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-deployment.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f postgres-service.yaml
+                            kubectl --kubeconfig=${kubeconfig} apply -f deployment.yaml
+                            
+                            echo "Deployment successful. Waiting for pods to be ready..."
+                            kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s
+                            
+                            echo "Getting service URL..."
+                            kubectl --kubeconfig=${kubeconfig} get services
+                        """
+                    }
+                }
             }
         }
     }
