@@ -2,7 +2,7 @@
 FROM maven:3.8.6-jdk-11 AS builder
 WORKDIR /app
 COPY . .
-RUN mvn -B clean package -DskipTests -pl obp-api -am
+RUN mvn -B clean package -DskipTests -pl obp-api -am -Pci
 
 # Étape 2: Créer l'image finale avec Tomcat
 FROM tomcat:9.0-jdk11
