@@ -47,7 +47,7 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+       stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([
                     file(credentialsId: 'minikube-ca-cert', variable: 'K8S_CA_CERT_FILE'),
