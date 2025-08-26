@@ -190,6 +190,10 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
             </plugin>
         </plugins>
     </build>
