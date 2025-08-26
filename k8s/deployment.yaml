@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: obp-api
+  name: obp-api-deployment
 spec:
   replicas: 1
   selector:
@@ -12,8 +12,36 @@ spec:
       labels:
         app: obp-api
     spec:
+      imagePullSecrets:
+      - name: dockerhub-creds
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -z postgres-service 5432; do echo "waiting for postgres..."; sleep 2; done;']
       containers:
       - name: obp-api
-        image: iheb137/obp-api:latest
+        image: iheb99/obp-api:latest
+        imagePullPolicy: Always  # <--- AJOUTE CETTE LIGNE ICI
         ports:
         - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props
+          subPath: default.props
+      volumes:
+      - name: config-volume
+        configMap:
+          name: obp-api-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: obp-api-service
+spec:
+  selector:
+    app: obp-api
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: NodePort
