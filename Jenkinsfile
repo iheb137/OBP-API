@@ -7,7 +7,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 20, unit: 'MINUTES')
+        timeout(time: 60, unit: 'MINUTES') // Augmenté à 60 min pour éviter timeout
     }
 
     environment {
@@ -26,19 +26,15 @@ pipeline {
      
         stage('Package Application') {
             steps {
-                // Compile l'application en utilisant le settings.xml de Jenkins
                 withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am'
+                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -Pci' // Ajout -Pci pour skip git-commit-id-plugin
                 }
             }
         }
        
         stage('Build & Push Docker Image') {
             steps {
-                // Construit l'image en utilisant le Dockerfile du dépôt Git
                 sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
-
-                // Pousse l'image vers Docker Hub
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS) {
                         sh "docker push ${DOCKER_IMAGE}"
@@ -47,7 +43,7 @@ pipeline {
             }
         }
 
-       stage('Deploy to Kubernetes') {
+        stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([
                     file(credentialsId: 'minikube-ca-cert', variable: 'K8S_CA_CERT_FILE'),
@@ -66,11 +62,11 @@ pipeline {
                         echo "Deploying to Kubernetes..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f ./k8s"
                         
-                        echo "Deployment successful. Waiting for pods to be ready..."
+                        echo "Waiting for pods to be ready..."
                         sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
                         
                         echo "Getting service URL..."
-                        sh "kubectl --kubeconfig=${kubeconfig} get services"
+                        sh "minikube service obp-api-service --url" // Ajout pour obtenir l'URL
                     }
                 }
             }
