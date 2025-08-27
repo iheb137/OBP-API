@@ -66,7 +66,7 @@ pipeline {
                         sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
                         
                         echo "Getting service URL..."
-                        sh "minikube service obp-api-service --url" // Ajout pour obtenir l'URL
+                        sh "kubectl --kubeconfig=${kubeconfig} get svc obp-api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
                     }
                 }
             }
