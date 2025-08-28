@@ -55,7 +55,9 @@ pipeline {
                         sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
                         
                         echo "Getting service URL..."
+                        // Affiche l'URL et la liste des services à la fin du build
                         sh "echo '--> Application URL: http://192.168.49.2:'\$(kubectl --kubeconfig=${kubeconfig} get service obp-api-service -o jsonpath='{.spec.ports[0].nodePort}')"
+                        sh "kubectl --kubeconfig=${kubeconfig} get services"
                     }
                 }
             }
