@@ -1,10 +1,10 @@
-# Étape 1: "Builder" - Compiler le code avec Maven
+# ÉTAPE 1: "Builder" - Compiler le code avec Maven
 FROM maven:3.8.6-jdk-11 AS builder
 WORKDIR /app
 COPY . .
 RUN mvn -B clean package -DskipTests -pl obp-api -am
 
-# Étape 2: "Final" - Créer l'image Tomcat avec l'application
+# ÉTAPE 2: "Final" - Créer l'image Tomcat avec l'application
 FROM tomcat:9.0-jdk11
 RUN rm -rf /usr/local/tomcat/webapps/*
 
