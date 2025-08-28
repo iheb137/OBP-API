@@ -1,50 +1,37 @@
 pipeline {
     agent {
-        docker {
-            image 'iheb99/maven-docker-kubectl:latest'
-            args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host -v maven-cache:/root/.m2'
-        }
-    }
-
-    options {
-        timeout(time: 60, unit: 'MINUTES') // Augmenté à 60 min pour éviter timeout
-    }
-
-    environment {
-        DOCKER_IMAGE       = "iheb99/obp-api:latest"
-        DOCKER_CREDENTIALS = "docker-hub-creds"
-        GIT_BRANCH         = "develop"
+        // L'agent s'exécute sur le master Jenkins, qui a déjà accès à Docker.
+        label 'master'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 cleanWs()
-                git branch: "${env.GIT_BRANCH}", url: 'https://github.com/iheb137/OBP-API.git'
+                git branch: 'develop', credentialsId: 'github-token', url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
-     
-        stage('Package Application') {
-            steps {
-                withMaven(mavenSettingsConfig: 'obp-maven-settings') {
-                    sh 'mvn -B clean package -DskipTests -pl obp-api -am -Pci' // Ajout -Pci pour skip git-commit-id-plugin
+        
+        stage('Build, Push & Deploy') {
+            agent {
+                // On utilise votre image custom pour avoir kubectl et docker
+                docker {
+                    image 'iheb99/maven-docker-kubectl:latest'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
                 }
             }
-        }
-       
-        stage('Build & Push Docker Image') {
             steps {
-                sh "docker build --no-cache -t ${DOCKER_IMAGE} ."
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKER_CREDENTIALS) {
-                        sh "docker push ${DOCKER_IMAGE}"
+                    // 1. Construire l'image avec notre nouveau Dockerfile multi-étapes
+                    def dockerImage = docker.build("iheb99/obp-api:latest", "--no-cache .")
+                    
+                    // 2. Pousser l'image vers Docker Hub
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-creds') {
+                        dockerImage.push()
                     }
                 }
-            }
-        }
-
-        stage('Deploy to Kubernetes') {
-            steps {
+                
+                // 3. Déployer sur Kubernetes
                 withCredentials([
                     file(credentialsId: 'minikube-ca-cert', variable: 'K8S_CA_CERT_FILE'),
                     file(credentialsId: 'minikube-client-cert', variable: 'K8S_CLIENT_CERT_FILE'),
@@ -61,12 +48,6 @@ pipeline {
                         
                         echo "Deploying to Kubernetes..."
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f ./k8s"
-                        
-                        echo "Waiting for pods to be ready..."
-                        sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
-                        
-                        echo "Getting service URL..."
-                        sh "kubectl --kubeconfig=${kubeconfig} get svc obp-api-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'"
                     }
                 }
             }
