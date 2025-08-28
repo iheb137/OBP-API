@@ -1,28 +1,27 @@
 pipeline {
-    agent {
-        // L'agent s'exécute sur le master Jenkins, qui a déjà accès à Docker.
-        label 'master'
-    }
+    // Utilise n'importe quel agent disponible pour la première étape (le checkout)
+    agent any
 
     stages {
         stage('Checkout') {
             steps {
                 cleanWs()
+                // Checkout du code en utilisant votre token GitHub
                 git branch: 'develop', credentialsId: 'github-token', url: 'https://github.com/iheb137/OBP-API.git'
             }
         }
         
         stage('Build, Push & Deploy') {
+            // Utilise votre image Docker custom pour avoir accès à 'docker' et 'kubectl'
             agent {
-                // On utilise votre image custom pour avoir kubectl et docker
                 docker {
                     image 'iheb99/maven-docker-kubectl:latest'
                     args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
                 }
             }
             steps {
+                // 1. Construire l'image avec notre nouveau Dockerfile multi-étapes
                 script {
-                    // 1. Construire l'image avec notre nouveau Dockerfile multi-étapes
                     def dockerImage = docker.build("iheb99/obp-api:latest", "--no-cache .")
                     
                     // 2. Pousser l'image vers Docker Hub
@@ -40,6 +39,7 @@ pipeline {
                     script {
                         def kubeconfig = './kubeconfig_generated.yaml'
                         sh """
+                            # Créer un kubeconfig propre et fiable à partir des certificats
                             kubectl config set-cluster minikube --server=https://192.168.49.2:8443 --certificate-authority=\$K8S_CA_CERT_FILE --embed-certs=true --kubeconfig=${kubeconfig}
                             kubectl config set-credentials minikube --client-certificate=\$K8S_CLIENT_CERT_FILE --client-key=\$K8S_CLIENT_KEY_FILE --embed-certs=true --kubeconfig=${kubeconfig}
                             kubectl config set-context minikube --cluster=minikube --user=minikube --kubeconfig=${kubeconfig}
@@ -47,7 +47,14 @@ pipeline {
                         """
                         
                         echo "Deploying to Kubernetes..."
+                        // Applique tous les fichiers de configuration du dossier k8s
                         sh "kubectl --kubeconfig=${kubeconfig} apply -f ./k8s"
+                        
+                        echo "Deployment successful. Waiting for pods to be ready..."
+                        sh "kubectl --kubeconfig=${kubeconfig} wait --for=condition=ready pod -l app=obp-api --timeout=300s"
+                        
+                        echo "Getting service URL..."
+                        sh "echo '--> Application URL: http://192.168.49.2:'\$(kubectl --kubeconfig=${kubeconfig} get service obp-api-service -o jsonpath='{.spec.ports[0].nodePort}')"
                     }
                 }
             }
