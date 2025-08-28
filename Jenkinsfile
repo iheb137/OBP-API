@@ -16,11 +16,12 @@ pipeline {
             agent {
                 docker {
                     image 'iheb99/maven-docker-kubectl:latest'
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8'
+                    // --network=host est crucial pour que kubectl puisse joindre Minikube
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host'
                 }
             }
             steps {
-                // 1. Construire l'image avec notre nouveau Dockerfile multi-étapes
+                // 1. Construire l'image avec le Dockerfile multi-étapes
                 script {
                     def dockerImage = docker.build("iheb99/obp-api:latest", "--no-cache .")
                     
