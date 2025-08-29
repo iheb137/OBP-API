@@ -11,7 +11,7 @@ COPY . .
 # Lance la compilation Maven.
 # -DskipTests pour sauter les tests.
 # -pl obp-api -am pour ne construire que le module api et ses dépendances.
-# -P-ci pour désactiver les plugins problématiques en intégration continue.
+# -P-ci pour désactiver les plugins problématiques en intégration continue (corrige l'erreur .git not found).
 RUN mvn -B clean package -DskipTests -pl obp-api -am -P-ci
 
 
