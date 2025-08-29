@@ -13,8 +13,10 @@ pipeline {
             agent {
                 docker {
                     image 'iheb99/maven-docker-kubectl:latest'
-                    // --network=host est la correction cruciale pour que kubectl puisse joindre Minikube
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host'
+                    // CORRECTIONS CRUCIALES :
+                    // 1. --network=host : pour que kubectl puisse joindre Minikube.
+                    // 2. -v maven-cache:/root/.m2 : pour créer un cache Maven et accélérer les builds.
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host -v maven-cache:/root/.m2'
                 }
             }
             steps {
