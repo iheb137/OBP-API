@@ -16,7 +16,7 @@ pipeline {
             agent {
                 docker {
                     image 'iheb99/maven-docker-kubectl:latest'
-                    // --network=host est crucial pour que kubectl puisse joindre Minikube
+                    // --network=host est la correction cruciale pour que kubectl puisse joindre Minikube
                     args '-u root -v /var/run/docker.sock:/var/run/docker.sock --dns 8.8.8.8 --network=host'
                 }
             }
@@ -57,7 +57,6 @@ pipeline {
                         echo "Getting service URL..."
                         // Affiche l'URL et la liste des services à la fin du build
                         sh "echo '--> Application URL: http://192.168.49.2:'\$(kubectl --kubeconfig=${kubeconfig} get service obp-api-service -o jsonpath='{.spec.ports[0].nodePort}')"
-                        sh "kubectl --kubeconfig=${kubeconfig} get services"
                     }
                 }
             }
