@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: obp-api-deployment
+  labels:
+    app: obp-api
 spec:
   replicas: 1
   selector:
@@ -12,8 +14,7 @@ spec:
       labels:
         app: obp-api
     spec:
-      imagePullSecrets:
-      - name: dockerhub-creds
+      # Ce conteneur attend que Postgres soit prêt avant de lancer l'application
       initContainers:
       - name: wait-for-postgres
         image: busybox:1.28
@@ -21,27 +22,16 @@ spec:
       containers:
       - name: obp-api
         image: iheb99/obp-api:latest
-        imagePullPolicy: Always  # <--- AJOUTE CETTE LIGNE ICI
         ports:
         - containerPort: 8080
-        volumeMounts:
-        - name: config-volume
-          mountPath: /usr/local/tomcat/webapps/ROOT/WEB-INF/classes/props/default.props
-          subPath: default.props
-      volumes:
-      - name: config-volume
-        configMap:
-          name: obp-api-config
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: obp-api-service
-spec:
-  selector:
-    app: obp-api
-  ports:
-    - protocol: TCP
-      port: 8080
-      targetPort: 8080
-  type: NodePort
+        # Injecte les informations de connexion à la base de données
+        env:
+        - name: OBP_DB_USERNAME
+          value: "obp_api_user"
+        - name: OBP_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: OBP_DB_URL
+          value: "jdbc:postgresql://postgres-service:5432/obp_api_db"
